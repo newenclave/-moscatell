@@ -23,14 +23,10 @@ namespace async_transport {
         typedef std::weak_ptr<this_type>   weak_type;
         typedef ST stream_type;
 
-        enum message_transform_type {
-            DONT_TRANSFORM_MESSAGE,
-            TRANSFORM_MESSAGE
-        };
-
-        enum read_dispacth_type {
-            DONT_DISPATCH_READ,
-            DISPATCH_READ
+        enum point_options {
+            OPT_NONE              = 0x00,
+            OPT_TRANSFORM_MESSAGE = 0x01,
+            OPT_DISPATCH_READ     = 0x02,
         };
 
         typedef std::function <
@@ -78,17 +74,17 @@ namespace async_transport {
         bool                              active_;
 
         static
-        call_impl get_read_dispatch( read_dispacth_type dispatch )
+        call_impl get_read_dispatch( std::uint32_t opts )
         {
-            return ( dispatch == DISPATCH_READ )
+            return ( opts & OPT_DISPATCH_READ )
                    ? &this_type::start_read_impl_wrap
                    : &this_type::start_read_impl;
         }
 
         static
-        call_impl get_message_transform( message_transform_type transform )
+        call_impl get_message_transform( std::uint32_t opts )
         {
-            return ( transform == TRANSFORM_MESSAGE )
+            return ( opts & OPT_TRANSFORM_MESSAGE )
                    ? &this_type::async_write_transform
                    : &this_type::async_write_no_transform;
         }
@@ -97,14 +93,13 @@ namespace async_transport {
 
         point_iface( boost::asio::io_service &ios,
                      size_t read_block_size,
-                     read_dispacth_type dispatch_read,
-                     message_transform_type transform_message )
+                     std::uint32_t opts )
             :ios_(ios)
             ,write_dispatcher_(ios_)
             ,stream_(ios_)
             ,read_buffer_(read_block_size)
-            ,read_impl_(get_read_dispatch(dispatch_read))
-            ,async_write_impl_(get_message_transform(transform_message))
+            ,read_impl_(get_read_dispatch(opts))
+            ,async_write_impl_(get_message_transform(opts))
             ,active_(true)
         { }
 
@@ -224,7 +219,15 @@ namespace async_transport {
                 if( top.success_ ) {
                     top.success_( error );
                 }
+
                 on_write_error( error );
+
+                /// pop queue
+                queue_pop( );
+
+                if( !queue_empty( ) ) {
+                    async_write(  );
+                }
             }
 
         }
@@ -301,10 +304,10 @@ namespace async_transport {
 
         virtual void on_read( const char *data, size_t length ) = 0;
 
-        virtual void on_read_error( const boost::system::error_code &code )
+        virtual void on_read_error( const boost::system::error_code &/*code*/ )
         { }
 
-        virtual void on_write_error( const boost::system::error_code &code )
+        virtual void on_write_error( const boost::system::error_code &/*code*/ )
         { }
 
         virtual void on_write_exception(  )

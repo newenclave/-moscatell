@@ -32,12 +32,19 @@ namespace {
     protected:
 
         tuntap_transport( ba::io_service &ios )
-            :transport(ios, 4096, transport::DISPATCH_READ, transport::DONT_TRANSFORM_MESSAGE)
+            :transport(ios, 4096, transport::OPT_NONE )
         { }
 
-        void on_read( const char *data, size_t length ) override
+        void on_read( const char * /*data*/, size_t length ) override
         {
             std::cout << "read " << length << " bytes\n";
+            write( "\000000000", 10 );
+        }
+
+        void on_write_error( const boost::system::error_code &code ) override
+        {
+            std::cout << "Write error: " << code.value( )
+                      << " " << code.message( ) << "\n";
         }
 
     public:
