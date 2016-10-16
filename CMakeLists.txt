@@ -52,8 +52,11 @@ add_subdirectory( vtrc )
 set( VTRC_IMPORT_CMAKE "${CMAKE_CURRENT_SOURCE_DIR}/vtrc/vtrc-import.cmake")
 
 include( ${VTRC_IMPORT_CMAKE} )
+include_directories( ${VTRC_INCLUDE_DIRS} )
+
 ######################################################################
 
+include_directories( ${CMAKE_CURRENT_SOURCE_DIR} )
 
 if(NOT WIN32)
     set(CMAKE_CXX_FLAGS

@@ -7,6 +7,8 @@ add_executable(${exe_name} ${src_dir})
 
 list(APPEND dependencies
     ${PROJECT_NAME}_common_s
+    VTRC_CLIENT
+    VTRC_COMMON
     Boost
     )
 
