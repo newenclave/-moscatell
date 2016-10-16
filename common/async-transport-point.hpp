@@ -250,9 +250,9 @@ namespace async_transport {
             inst->success_ = close;
 
             write_dispatcher_.post(
-                    std::bind( &this_type::write_impl, this,
-                                 inst, this->shared_from_this( ) )
-                    );
+                std::bind( &this_type::write_impl, this,
+                             inst, this->shared_from_this( ) )
+                );
         }
 
         /// ================ read ================ ///
@@ -279,12 +279,12 @@ namespace async_transport {
             namespace ph = std::placeholders;
             /// use strand::wrap for callback
             stream_.async_read_some(
-                    boost::asio::buffer(&read_buffer_[0], read_buffer_.size( )),
-                    write_dispatcher_.wrap(
-                        std::bind( &this_type::read_handler, this,
-                            ph::_1, ph::_2,
-                            this->shared_from_this( ))
-                    )
+                boost::asio::buffer(&read_buffer_[0], read_buffer_.size( )),
+                write_dispatcher_.wrap(
+                    std::bind( &this_type::read_handler, this,
+                        ph::_1, ph::_2,
+                        this->shared_from_this( ))
+                )
              );
         }
 
@@ -292,11 +292,11 @@ namespace async_transport {
         {
             namespace ph = std::placeholders;
             stream_.async_read_some(
-                    boost::asio::buffer(&read_buffer_[0], read_buffer_.size( )),
-                    std::bind( &this_type::read_handler, this,
-                        ph::_1, ph::_2,
-                        this->shared_from_this( )
-                    )
+                boost::asio::buffer(&read_buffer_[0], read_buffer_.size( )),
+                std::bind( &this_type::read_handler, this,
+                    ph::_1, ph::_2,
+                    this->shared_from_this( )
+                )
             );
         }
 
