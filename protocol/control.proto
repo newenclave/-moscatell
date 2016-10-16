@@ -1,3 +1,6 @@
 package moscatell.rpc;
 
-message test { }
+message test_message {
+    optional uint32 i = 1;
+    optional bytes  b = 2;
+}
