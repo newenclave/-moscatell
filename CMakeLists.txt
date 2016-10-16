@@ -63,6 +63,7 @@ if(NOT WIN32)
         "${CMAKE_CXX_FLAGS} -Wextra -Wall -Wno-long-long -pedantic -std=c++11")
 endif( )
 
+add_subdirectory(protocol)
 add_subdirectory(common)
 add_subdirectory(server)
 add_subdirectory(client)

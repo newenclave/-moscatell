@@ -1,0 +1,3 @@
+package moscatell.rpc;
+
+message test { }

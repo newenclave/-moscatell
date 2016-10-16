@@ -20,6 +20,8 @@
 #include <errno.h>
 #include <stdarg.h>
 
+#include "protocol/control.pb.h"
+
 namespace {
 
     namespace ba         = boost::asio;
@@ -91,6 +93,7 @@ namespace {
 int main( )
 {
     try {
+
         ba::io_service ios;
         ba::io_service::work wrk(ios);
         auto tuntap = tuntap_transport::create( ios );
