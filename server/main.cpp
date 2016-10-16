@@ -45,6 +45,7 @@ namespace {
         {
             std::cout << "Write error: " << code.value( )
                       << " " << code.message( ) << "\n";
+            //throw std::runtime_error( code.message( ) );
         }
 
     public:
