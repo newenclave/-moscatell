@@ -1,12 +1,12 @@
 
 aux_source_directory(. src_dir)
 
-set( exe_name test_async_client )
+set( exe_name  ${PROJECT_NAME}_client )
 
 add_executable(${exe_name} ${src_dir})
 
 list(APPEND dependencies
-    test_asyn_common_s
+    ${PROJECT_NAME}_common_s
     Boost
     )
 
@@ -27,9 +27,10 @@ endforeach(dep)
 
 if(WIN32)
     target_link_libraries(${exe_name} ws2_32.lib)
+else(WIN32)
+    target_link_libraries(  ${exe_name} pthread )
 endif(WIN32)
 
-target_link_libraries(  ${exe_name} pthread )
 
 set_target_properties(${exe_name} PROPERTIES COMPILE_DEFINITIONS "STATIC")
 
