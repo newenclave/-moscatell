@@ -14,6 +14,8 @@
 
 #include "subsys.inc"
 
+#include "common/moscatell-lua.h"
+
 using namespace msctl;
 
 namespace {

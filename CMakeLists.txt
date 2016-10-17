@@ -61,6 +61,37 @@ include_directories( ${VTRC_INCLUDE_DIRS} )
 
 ######################################################################
 
+############################ LUA library ############################
+
+if( LUA_SRC )
+
+    add_subdirectory( lua-build )
+    set( LUA_FOUND 1 )
+
+else( )
+
+    message( "INITING submodule LUA" )
+    execute_process( COMMAND "git" "submodule" "init"
+                     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+    execute_process( COMMAND "git" "submodule" "update" "lua"
+                     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+
+    find_file( LUA_SM_PATH
+               NAMES "lua.h"
+               PATHS "${CMAKE_CURRENT_SOURCE_DIR}/lua/src/" )
+
+    if( LUA_SM_PATH )
+        set( LUA_FOUND 1 )
+        set( LUA_SRC "${CMAKE_CURRENT_SOURCE_DIR}/lua/src" )
+        add_subdirectory( lua-build )
+        message( "Lua SRC: "  ${LUA_SRC} )
+    endif( LUA_SM_PATH )
+
+    include_directories( ${LUA_SRC} )
+
+endif( )
+######################################################################
+
 include_directories( ${CMAKE_CURRENT_SOURCE_DIR} )
 
 if(NOT WIN32)
