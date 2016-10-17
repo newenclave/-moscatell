@@ -16,6 +16,8 @@
 
 #include "common/moscatell-lua.h"
 
+#include "boost/program_options.hpp"
+
 using namespace msctl;
 
 namespace {
