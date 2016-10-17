@@ -22,6 +22,7 @@ namespace msctl { namespace agent {
     public:
 
         %ss-name%( application *app );
+        std::shared_ptr<%ss-name%> create( application *app );
 
     private:
 
@@ -45,6 +46,13 @@ def source_file( ):
     """
 #include "subsys-%ss-name%.h"
 
+
+#define LOG(lev) log_(lev, "%ss-name%") 
+#define LOGINF   LOG(logger_impl::level::info)
+#define LOGDBG   LOG(logger_impl::level::debug)
+#define LOGERR   LOG(logger_impl::level::error)
+#define LOGWRN   LOG(logger_impl::level::warning)
+
 namespace msctl { namespace agent {
 
     struct %ss-name%::impl {
@@ -63,11 +71,19 @@ namespace msctl { namespace agent {
     { }
 
     void %ss-name%::start( )
-    { }
+    { 
+        impl_->LOGINF << "Started.";
+    }
 
     void %ss-name%::stop( )
-    { }
-
+    { 
+        impl_->LOGINF << "Stopped.";
+    }
+    
+    std::shared_ptr<%ss-name%> %ss-name%::create( application *app )
+    {
+        return std::make_shared<%%ss-name>( app );
+    }
 }}
 
 		"""

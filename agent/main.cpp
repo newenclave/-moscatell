@@ -25,6 +25,14 @@ namespace {
 
     namespace vcomm = vtrc::common;
 
+    void add_all( agent::application *app )
+    {
+        using namespace msctl::agent;
+        app->subsys_add<logging>( );
+        app->subsys_add<listener>( );
+        app->subsys_add<client>( );
+    }
+
     class tuntap_transport: public transport {
 
     protected:
@@ -72,6 +80,11 @@ int main( )
 
         vcomm::pool_pair pp(1, 1);
         agent::application app(pp);
+
+        add_all( &app );
+
+        app.init( );
+        app.start( );
 
         auto tuntap = tuntap_transport::create( pp.get_io_service( ) );
         auto hdl = common::open_tun( "tun10" );

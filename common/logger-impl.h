@@ -33,7 +33,7 @@ namespace msctl { namespace agent {
     using logger_signal_type = void ( const log_record_info,
                                       logger_data_type const & );
 
-    class logger: public common::logger {
+    class logger_impl: public common::logger {
 
         struct  impl;
         impl   *impl_;
@@ -44,9 +44,10 @@ namespace msctl { namespace agent {
         using level = common::logger::level;
         static const int id = 0;
 
-        logger( boost::asio::io_service &ios, level lvl,
-                const char *split_string = "\n" );
-        ~logger( );
+        logger_impl( boost::asio::io_service &ios, level lvl,
+                     const char *split_string = "\n" );
+
+        ~logger_impl( );
 
         boost::asio::io_service &get_io_service( );
         void dispatch( std::function<void ( )> call );

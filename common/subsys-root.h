@@ -30,8 +30,10 @@ namespace msctl { namespace common {
         virtual ~subsys_root( )
         { }
 
+    protected:
+
         template <typename S, typename ...Agrs>
-        void subsys_add( Agrs && ...args )
+        void add_subsys( Agrs && ...args )
         {
             auto id = utilities::type_uid<S>::uid( );
             auto ss = S::create(std::forward<Agrs>(args)...);
@@ -42,6 +44,7 @@ namespace msctl { namespace common {
             }
         }
 
+    public:
         template <typename S>
         S &subsys( )
         {

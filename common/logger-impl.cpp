@@ -1,4 +1,4 @@
-#include "logger.h"
+#include "logger-impl.h"
 
 #include <chrono>
 #include <iostream>
@@ -44,7 +44,7 @@ namespace msctl { namespace agent {
         return s_thread_prefix ? *s_thread_prefix : empty;
     }
 
-    struct logger::impl {
+    struct logger_impl::impl {
         ba::io_service::strand   dispatcher_;
         const char              *split_string_;
         queue_type               queue_;
@@ -56,35 +56,35 @@ namespace msctl { namespace agent {
         { }
     };
 
-    logger::logger( boost::asio::io_service &ios, level lvl,
+    logger_impl::logger_impl( boost::asio::io_service &ios, level lvl,
                     const char *split_string )
         :common::logger( lvl )
         ,impl_(new impl(ios, split_string))
     { }
 
-    logger::~logger( )
+    logger_impl::~logger_impl( )
     {
         //while( impl_->dispatcher_.get_io_service( ).poll_one( ) );
         delete impl_;
     }
 
-    boost::asio::io_service &logger::get_io_service()
+    boost::asio::io_service &logger_impl::get_io_service()
     {
         return impl_->dispatcher_.get_io_service( );
     }
 
-    void logger::dispatch( std::function<void ( )> call )
+    void logger_impl::dispatch( std::function<void ( )> call )
     {
         impl_->dispatcher_.post( call );
     }
 
-    bool logger::empty( ) const
+    bool logger_impl::empty( ) const
     {
         std::lock_guard<std::mutex> l(impl_->queue_lock_);
         return impl_->queue_.empty( );
     }
 
-    size_t logger::drop_all( )
+    size_t logger_impl::drop_all( )
     {
         size_t res = 0;
         while( !empty( ) ) {
@@ -95,7 +95,7 @@ namespace msctl { namespace agent {
     }
 
     void fill_record_info( log_record_info &info,
-                           logger::level lvl, const std::string &name )
+                           logger_impl::level lvl, const std::string &name )
     {
         info.level   = static_cast<int>(lvl);
         info.name    = name;
@@ -104,22 +104,22 @@ namespace msctl { namespace agent {
         info.tprefix = thread_prefix::get( );
     }
 
-    void logger::send_data( level lev, const std::string &name,
+    void logger_impl::send_data( level lev, const std::string &name,
                                        const std::string &data )
     {
         //static const bpt::ptime epoch( bpt::ptime::date_type(1970, 1, 1) );
         emplace_element( lev, name, data, true );
-        impl_->dispatcher_.post( std::bind( &logger::do_write, this ) );
+        impl_->dispatcher_.post( std::bind( &logger_impl::do_write, this ) );
     }
 
-    void logger::send_data_nosplit( level lev, const std::string &name,
+    void logger_impl::send_data_nosplit( level lev, const std::string &name,
                                     const std::string &data )
     {
         emplace_element( lev, name, data, false );
-        impl_->dispatcher_.post( std::bind( &logger::do_write, this ) );
+        impl_->dispatcher_.post( std::bind( &logger_impl::do_write, this ) );
     }
 
-    void logger::emplace_element( logger::level lev,
+    void logger_impl::emplace_element( logger_impl::level lev,
                                   const std::string &name,
                                   const std::string &data,
                                   bool split )
@@ -138,7 +138,7 @@ namespace msctl { namespace agent {
         }
     }
 
-    void logger::do_write( ) noexcept
+    void logger_impl::do_write( ) noexcept
     {
 
         queue_element_ptr ptr;

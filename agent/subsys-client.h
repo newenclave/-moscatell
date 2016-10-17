@@ -14,6 +14,7 @@ namespace msctl { namespace agent {
     public:
 
         client( application *app );
+        static std::shared_ptr<client> create( application *app );
 
     private:
 
