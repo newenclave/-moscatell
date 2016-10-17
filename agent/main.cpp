@@ -98,10 +98,13 @@ int main( )
 
         agent::thread_prefix::set( "M" );
 
-        vcomm::pool_pair pp(1, 1);
+        vcomm::pool_pair pp(0, 0);
 
         pp.get_rpc_pool( ).assign_thread_decorator( decorator( "R" ) );
         pp.get_io_pool( ).assign_thread_decorator( decorator( "I" ) );
+
+        pp.get_rpc_pool( ).add_threads( 1 );
+        pp.get_io_pool( ).add_threads( 1 );
 
         agent::application app(pp);
         add_all( &app );
