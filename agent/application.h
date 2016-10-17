@@ -4,7 +4,7 @@
 #include "common/utilities.h"
 #include "common/subsys-root.h"
 
-namespace msctl { namespace server {
+namespace msctl { namespace agent {
 
     class application: public common::subsys_root {
 

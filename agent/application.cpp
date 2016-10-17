@@ -1,6 +1,6 @@
 #include "application.h"
 
-namespace msctl { namespace server {
+namespace msctl { namespace agent {
 
     application::application()
     {

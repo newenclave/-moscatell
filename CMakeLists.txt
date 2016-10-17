@@ -24,7 +24,9 @@ set(Boost_USE_MULTITHREADED   ON)
 set(Boost_USE_STATIC_RUNTIME  ON)
 
 find_package( Boost 1.53 COMPONENTS
-                    system
+                system
+                program_options
+                filesystem
               REQUIRED)
 
 ############################ VTRC library ############################
@@ -65,6 +67,6 @@ endif( )
 
 add_subdirectory(protocol)
 add_subdirectory(common)
-add_subdirectory(server)
+add_subdirectory(agent)
 add_subdirectory(client)
 

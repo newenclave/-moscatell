@@ -4,24 +4,13 @@
 #include "common/async-transport-point.hpp"
 #include "application.h"
 
-//#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <net/if.h>
-#include <linux/if_tun.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/ioctl.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <arpa/inet.h>
-#include <sys/select.h>
-#include <sys/time.h>
-#include <errno.h>
-#include <stdarg.h>
-
 #include "protocol/control.pb.h"
 #include "common/subsys-root.h"
+#include "common/tuntap.h"
+
+#include "linux/ip.h"
+
+using namespace msctl;
 
 namespace {
 
@@ -38,10 +27,18 @@ namespace {
             :transport(ios, 4096, transport::OPT_NONE )
         { }
 
-        void on_read( const char * /*data*/, size_t length ) override
+        void on_read( const char *data, size_t length ) override
         {
-            std::cout << "read " << length << " bytes\n";
-            write( "\000000000", 10 );
+            const iphdr *hdr = reinterpret_cast<const iphdr *>(data);
+            //const ipv6hdr *v6hdr = reinterpret_cast<const iphdr *>(data);
+
+            ba::ip::address_v4 sa(ntohl(hdr->saddr));
+            ba::ip::address_v4 da(ntohl(hdr->daddr));
+            std::cout << "read " << length
+                      << " bytes "
+                      << " from " << sa.to_string( )
+                      << " to " << da.to_string( )
+                      << "\n";
         }
 
         void on_write_error( const boost::system::error_code &code ) override
@@ -61,34 +58,6 @@ namespace {
 
     };
 
-    int tun_alloc( const char *dev, int flags )
-    {
-
-        struct ifreq ifr;
-        int fd, err;
-        const char *clonedev = "/dev/net/tun";
-
-        if( (fd = open(clonedev , O_RDWR)) < 0 ) {
-            perror("Opening /dev/net/tun");
-            return fd;
-        }
-
-        memset(&ifr, 0, sizeof(ifr));
-
-        ifr.ifr_flags = flags;
-
-        if (*dev) {
-            strncpy(ifr.ifr_name, dev, IFNAMSIZ);
-        }
-
-        if( (err = ioctl(fd, TUNSETIFF, (void *)&ifr)) < 0 ) {
-            perror("ioctl(TUNSETIFF)");
-            close(fd);
-            return err;
-        }
-
-        return fd;
-    }
 }
 
 class test_ss: public msctl::common::subsys_iface {
@@ -103,7 +72,7 @@ public:
     void stop( )    override { }
 
     static
-    msctl::common::subsys_sptr create( msctl::server::application *,
+    msctl::common::subsys_sptr create( msctl::agent::application *,
                                        int i, ba::io_service &ios )
     {
         return std::make_shared<test_ss>(i, std::ref(ios));
@@ -118,12 +87,12 @@ int main( )
         ba::io_service::work wrk(ios);
         auto tuntap = tuntap_transport::create( ios );
 
-        msctl::server::application root;
+        msctl::agent::application root;
         root.subsys_add<test_ss>( 100, std::ref(ios) );
 
         root.subsys<test_ss>( ).start( );
 
-        auto hdl = tun_alloc( "tun10", IFF_TUN | IFF_NO_PI );
+        auto hdl = common::open_tun( "tun10" );
         if( hdl < 0 ) {
             std::perror( "tun_alloc" );
             return 1;
