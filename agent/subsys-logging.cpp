@@ -4,7 +4,9 @@
 #include <map>
 #include <functional>
 
+#ifndef _WIN32
 #include <syslog.h>
+#endif
 
 #include "subsys-logging.h"
 #include "application.h"
@@ -180,7 +182,7 @@ namespace msctl { namespace agent {
             }
             return msctl::rpc::logger::info;
         }
-
+#ifndef _WIN32
         int level2syslog( int /*logger::level*/ val )
         {
             using lvl = logger_impl::level;
@@ -193,6 +195,7 @@ namespace msctl { namespace agent {
             }
             return LOG_INFO;
         }
+#endif
 
         class proto_looger_impl: public msctl::rpc::logger::instance {
 
@@ -452,7 +455,7 @@ namespace msctl { namespace agent {
             }
 
         };
-
+#ifndef _WIN32
         struct syslog_output: log_output {
 
             syslog_output(int min, int max)
@@ -479,7 +482,7 @@ namespace msctl { namespace agent {
                 return 0;
             }
         };
-
+#endif
         struct file_output: log_output {
             std::atomic<size_t> length_;
             ostream_uptr        stream_;
@@ -524,12 +527,12 @@ namespace msctl { namespace agent {
         };
 
         using connection_map = std::map<std::string, output_connection>;
-
+#ifndef _WIN32
         bool is_syslog( const std::string &path )
         {
             return path == syslog_name;
         }
-
+#endif
         bool is_stdout( const std::string &path )
         {
             return path == stdout_name || path == stdout_name2;
@@ -550,8 +553,10 @@ namespace msctl { namespace agent {
                 res.reset(new cout_output( minlvl, maxlvl ) );
             } else if( is_stderr( path ) ) {                    /// cerr
                 res.reset(new cerr_output( minlvl, maxlvl ) );
+#ifndef _WIN32
             } else if( is_syslog( path ) ) {                    /// syslog
                 res.reset(new syslog_output( minlvl, maxlvl ) );
+#endif
             } else {
                 try {
                     res.reset(new file_output( minlvl, maxlvl, path ));
@@ -574,7 +579,9 @@ namespace msctl { namespace agent {
 
         application          *app_;
         agent::logger_impl   &log_;
+#ifndef _WIN32
         bool                  syslog_;
+#endif
         connection_map        connections_;
         delayed_call          flusher_;
         void_call             flush_worker_;
@@ -583,7 +590,9 @@ namespace msctl { namespace agent {
         impl( application *app )
             :app_(app)
             ,log_(app_->log( ))
+#ifndef _WIN32
             ,syslog_(false)
+#endif
             ,flusher_(log_.get_io_service( ))
         {
             flush_worker_ = [this]( ) {
@@ -650,12 +659,13 @@ namespace msctl { namespace agent {
 
             namespace ph = std::placeholders;
 
+#ifndef _WIN32
             bool slog = is_syslog( path );
             if( slog && syslog_ ) {
                 LOGDBG << "Syslog is already here!";
                 return;
             }
-
+#endif
             output_connection &conn(   is_stdout(path)
                                      ? connections_[stdout_name]
                                      : connections_[path] );
@@ -663,11 +673,12 @@ namespace msctl { namespace agent {
             conn.output_ = create_by_name( path,
                                            static_cast<int>(minl),
                                            static_cast<int>(maxl), log_ );
+#ifndef _WIN32
             if( slog ) {
                 openlog( "ferro_remote", 0, LOG_USER );
                 syslog_ = true;
             }
-
+#endif
             conn.connection_ = log_.on_write_connect(
                         std::bind( &impl::log_output_slot, this,
                                    conn.output_.get( ),
@@ -711,8 +722,9 @@ namespace msctl { namespace agent {
         /// dispatcher!
         void del_logger_output( const std::string &name )
         {
+#ifndef _WIN32
             bool slog = is_syslog( name );
-
+#endif
             auto count = connections_.erase( name );
 
             if( count ) {
@@ -720,11 +732,12 @@ namespace msctl { namespace agent {
             } else {
                 LOGWRN << "Slot '" << name << "' was not found";
             }
-
+#ifndef _WIN32
             if( slog && syslog_ ) {
                 syslog_ = false;
                 closelog( );
             }
+#endif
             return;
         }
     };

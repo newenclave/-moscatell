@@ -10,6 +10,7 @@
 
 namespace msctl { namespace common {
 
+#ifndef _WIN32
     int opentuntap( const char *dev, int flags )
     {
         const char *clonedev = "/dev/net/tun";
@@ -46,5 +47,8 @@ namespace msctl { namespace common {
     {
         return opentuntap( name.c_str( ), IFF_TAP | IFF_NO_PI );
     }
+#else
+
+#endif
 
 }}
