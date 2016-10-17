@@ -42,7 +42,7 @@ namespace {
     protected:
 
         tuntap_transport( ba::io_service &ios )
-            :transport(ios, 4096, transport::OPT_NONE )
+            :transport(ios, 4096, transport::OPT_DISPATCH_READ )
         { }
 
         void on_read( const char *data, size_t length ) override
