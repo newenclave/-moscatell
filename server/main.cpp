@@ -21,6 +21,7 @@
 #include <stdarg.h>
 
 #include "protocol/control.pb.h"
+#include "common/subsys-root.h"
 
 namespace {
 
@@ -90,6 +91,25 @@ namespace {
     }
 }
 
+class test_ss: public msctl::common::subsys_iface {
+    ba::io_service &ios_;
+public:
+    test_ss( int , ba::io_service &ios )
+        :ios_(ios)
+    { }
+    std::string name( ) const override { return "test"; }
+    void init( )    override { }
+    void start( )   override { }
+    void stop( )    override { }
+
+    static
+    msctl::common::subsys_sptr create( msctl::server::application *,
+                                       int i, ba::io_service &ios )
+    {
+        return std::make_shared<test_ss>(i, std::ref(ios));
+    }
+};
+
 int main( )
 {
     try {
@@ -97,6 +117,11 @@ int main( )
         ba::io_service ios;
         ba::io_service::work wrk(ios);
         auto tuntap = tuntap_transport::create( ios );
+
+        msctl::server::application root;
+        root.subsys_add<test_ss>( 100, std::ref(ios) );
+
+        root.subsys<test_ss>( ).start( );
 
         auto hdl = tun_alloc( "tun10", IFF_TUN | IFF_NO_PI );
         if( hdl < 0 ) {
