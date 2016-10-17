@@ -90,12 +90,6 @@ namespace msctl { namespace agent {
             parent_type::add_subsys<S>( this, std::forward<Agrs>(args)... );
         }
 
-        template <typename S>
-        void subsys_add( )
-        {
-            parent_type::add_subsys<S>( this );
-        }
-
         static std::uint64_t now( );
         static std::uint64_t tick_count( );
         static std::uint64_t start_tick( );

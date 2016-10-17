@@ -74,15 +74,34 @@ namespace {
 
     };
 
+    vcomm::thread_pool::thread_decorator decorator( std::string p )
+    {
+        using dec_type = vcomm::thread_pool::call_decorator_type;
+        return [p]( dec_type dt ) {
+            switch ( dt ) {
+            case vcomm::thread_pool::CALL_PROLOGUE:
+                agent::thread_prefix::set( p );
+                break;
+            case vcomm::thread_pool::CALL_EPILOGUE:
+                agent::thread_prefix::set( "" );
+                break;
+            }
+        };
+    }
 }
 
 int main( )
 {
     try {
 
-        vcomm::pool_pair pp(1, 1);
-        agent::application app(pp);
+        agent::thread_prefix::set( "M" );
 
+        vcomm::pool_pair pp(1, 1);
+
+        pp.get_rpc_pool( ).assign_thread_decorator( decorator( "R" ) );
+        pp.get_io_pool( ).assign_thread_decorator( decorator( "I" ) );
+
+        agent::application app(pp);
         add_all( &app );
 
         app.init( );
@@ -96,7 +115,12 @@ int main( )
         }
         tuntap->get_stream( ).assign( hdl );
         tuntap->start_read( );
-        pp.get_io_pool( ).attach( );
+
+        pp.get_io_pool( ).attach( decorator( "M" ) );
+
+        agent::thread_prefix::set( "M" );
+
+        pp.join_all( );
 
     } catch( const std::exception &ex ) {
         std::cerr << "Error: " << ex.what( );
