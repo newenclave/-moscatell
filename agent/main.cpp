@@ -10,6 +10,10 @@
 
 #include "linux/ip.h"
 
+#include "vtrc-common/vtrc-pool-pair.h"
+
+#include "subsys.inc"
+
 using namespace msctl;
 
 namespace {
@@ -18,6 +22,8 @@ namespace {
     using posix_stream   = ba::posix::stream_descriptor;
     using transport      = async_transport::point_iface<posix_stream>;
     using transport_sptr = std::shared_ptr<transport>;
+
+    namespace vcomm = vtrc::common;
 
     class tuntap_transport: public transport {
 
@@ -60,38 +66,14 @@ namespace {
 
 }
 
-class test_ss: public msctl::common::subsys_iface {
-    ba::io_service &ios_;
-public:
-    test_ss( int , ba::io_service &ios )
-        :ios_(ios)
-    { }
-    std::string name( ) const override { return "test"; }
-    void init( )    override { }
-    void start( )   override { }
-    void stop( )    override { }
-
-    static
-    msctl::common::subsys_sptr create( msctl::agent::application *,
-                                       int i, ba::io_service &ios )
-    {
-        return std::make_shared<test_ss>(i, std::ref(ios));
-    }
-};
-
 int main( )
 {
     try {
 
-        ba::io_service ios;
-        ba::io_service::work wrk(ios);
-        auto tuntap = tuntap_transport::create( ios );
+        vcomm::pool_pair pp(1, 1);
+        agent::application app(pp);
 
-        msctl::agent::application root;
-        root.subsys_add<test_ss>( 100, std::ref(ios) );
-
-        root.subsys<test_ss>( ).start( );
-
+        auto tuntap = tuntap_transport::create( pp.get_io_service( ) );
         auto hdl = common::open_tun( "tun10" );
         if( hdl < 0 ) {
             std::perror( "tun_alloc" );
@@ -99,8 +81,8 @@ int main( )
         }
         tuntap->get_stream( ).assign( hdl );
         tuntap->start_read( );
+        pp.get_io_pool( ).attach( );
 
-        while( ios.run_one( ) );
     } catch( const std::exception &ex ) {
         std::cerr << "Error: " << ex.what( );
     }

@@ -4,7 +4,7 @@
 #include <sstream>
 #include <stdint.h>
 
-namespace fr { namespace common {
+namespace msctl { namespace common {
 
     class logger {
 

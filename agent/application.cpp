@@ -2,14 +2,11 @@
 
 namespace msctl { namespace agent {
 
-    application::application()
-    {
-
-    }
+    application::application(vtrc::common::pool_pair &pp)
+        :pp_(pp)
+    { }
 
     application::~application( )
-    {
-
-    }
+    { }
 
 }}

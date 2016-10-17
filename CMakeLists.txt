@@ -19,6 +19,9 @@ if( NOT CXX11_ENABLED )
     message( FATAL_ERROR "Your compiler is too old..." )
 endif( NOT CXX11_ENABLED)
 
+get_compiler_thread_local( THREAD_LOCAL_VALUE )
+add_definitions( -DTHREAD_LOCAL=${THREAD_LOCAL_VALUE} )
+
 set(Boost_USE_STATIC_LIBS     ON)
 set(Boost_USE_MULTITHREADED   ON)
 set(Boost_USE_STATIC_RUNTIME  ON)
