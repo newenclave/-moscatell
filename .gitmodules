@@ -2,3 +2,7 @@
 	path = vtrc
 	url = https://github.com/newenclave/vtrc
 	branch = master
+[submodule "lua"]
+	path = lua
+	url = https://github.com/newenclave/lua
+	branch = master
