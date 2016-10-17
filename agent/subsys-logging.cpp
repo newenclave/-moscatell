@@ -621,7 +621,7 @@ namespace msctl { namespace agent {
                 }
             };
 
-            flusher_.call_from_now( runner, delayed_call::seconds(3) );
+            flusher_.call_from_now( runner, delayed_call::seconds(timeout_) );
         }
 
         void reg_creator( const std::string &name,
@@ -745,7 +745,7 @@ namespace msctl { namespace agent {
     {
         shared_type new_inst(new logging(app));
 
-        new_inst->impl_->timeout_ = flush_timeout;
+        new_inst->impl_->timeout_ = flush_timeout >= 3 ? flush_timeout : 3;
 
         for( auto &d: def ) {
             new_inst->impl_->add_logger_output( d );
