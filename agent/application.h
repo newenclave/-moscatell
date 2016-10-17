@@ -14,7 +14,7 @@
 
 namespace msctl { namespace agent {
 
-    class application: public common::subsys_root {
+    class application {
 
     public:
 
@@ -62,6 +62,7 @@ namespace msctl { namespace agent {
         logger_impl                                  logger_;
         std::map<std::string, service_getter_type>   services_;
         std::mutex                                   services_lock_;
+        common::subsys_root                          subsystems_;
 
     public:
 
@@ -87,8 +88,24 @@ namespace msctl { namespace agent {
         template <typename S, typename ...Agrs>
         void subsys_add( Agrs && ...args )
         {
-            parent_type::add_subsys<S>( this, std::forward<Agrs>(args)... );
+            subsystems_.subsys_add<S>( this, std::forward<Agrs>(args)... );
         }
+
+        void start( )
+        {
+            subsystems_.start( );
+        }
+
+        void stop( )
+        {
+            subsystems_.stop( );
+        }
+
+        void init( )
+        {
+            subsystems_.init( );
+        }
+
 
         static std::uint64_t now( );
         static std::uint64_t tick_count( );
