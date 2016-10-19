@@ -23,6 +23,7 @@ using namespace msctl;
 namespace {
 
     namespace ba         = boost::asio;
+    namespace po         = boost::program_options;
     using posix_stream   = ba::posix::stream_descriptor;
     using transport      = async_transport::point_iface<posix_stream>;
     using transport_sptr = std::shared_ptr<transport>;
@@ -34,7 +35,8 @@ namespace {
         using namespace msctl::agent;
         app->subsys_add<logging>( );
         app->subsys_add<listener>( );
-        app->subsys_add<client>( );
+        app->subsys_add<clients>( );
+        app->subsys_add<tuntap>( );
     }
 
     class tuntap_transport: public transport {
@@ -90,36 +92,109 @@ namespace {
             }
         };
     }
+
+    void fill_all_options( po::options_description &desc )
+    {
+        using string_list = std::vector<std::string>;
+        desc.add_options( )
+            ("help,?",   "help message")
+
+            ("daemon,D", "run process as daemon")
+
+            ("name,n", po::value<std::string>( ),
+                    "agent name; whatever you want")
+
+            ("log,l", po::value<string_list>( ),
+                    "files for log output; use '-' for stdout")
+
+            ("io-pool-size,i",  po::value<unsigned>( )->default_value( 1 ),
+                    "threads for io operations; default = 1")
+
+            ("rpc-pool-size,r", po::value<unsigned>( )->default_value( 1 ),
+                    "threads for rpc calls; default = 1")
+
+            ("config,c",    po::value<std::string>( ),
+                            "lua script for configure server")
+
+            ("key,k", po::value< std::vector< std::string> >( ),
+                     "format is: key=id:key; "
+                     "key will use for client with this id; "
+                     "or key=key for key for any connections")
+            ;
+    }
+
+    po::variables_map create_cmd_params( int argc, const char **argv,
+                                         po::options_description const &desc )
+    {
+        po::variables_map vm;
+        po::parsed_options parsed (
+            po::command_line_parser(argc, argv)
+                .options(desc)
+                //.allow_unregistered( )
+                .run( ));
+        po::store( parsed, vm );
+        po::notify( vm);
+        return vm;
+    }
 }
 
-int main( )
+int main( int argc, const char **argv )
 {
     try {
 
-        agent::thread_prefix::set( "M" );
+        po::options_description options;
+        fill_all_options( options );
 
+        agent::thread_prefix::set( "M" );
         vcomm::pool_pair pp(0, 0);
+        agent::application app(pp);
+
+        app.cmd_opts( ) = create_cmd_params( argc, argv, options );
+        add_all( &app );
+        auto &opts = app.cmd_opts( );
+
+        if( opts.count( "daemon" ) )  {
+            int res = ::daemon( 1, 0 );
+            if( -1 == res ) {
+                std::cerr << "::daemon call failed: errno = " << errno << "\n";
+            } else if( res != 0 ) {
+                return 0;
+            }
+        }
+
+        auto io_poll = opts["io-pool-size"].as<std::uint32_t>( );
+        auto rpc_poll = opts["io-pool-size"].as<std::uint32_t>( );
+
+        io_poll  = io_poll  ? io_poll  : 1;
+        rpc_poll = rpc_poll ? rpc_poll : 1;
 
         pp.get_rpc_pool( ).assign_thread_decorator( decorator( "R" ) );
         pp.get_io_pool( ).assign_thread_decorator( decorator( "I" ) );
 
-        pp.get_rpc_pool( ).add_threads( 1 );
-        pp.get_io_pool( ).add_threads( 1 );
+        auto &logger = app.log( );
+        using lvl = agent::logger_impl::level;
 
-        agent::application app(pp);
-        add_all( &app );
+        logger( lvl::info, "main" ) << "Start threads. IO: " << io_poll
+                                    << " RPC: " << rpc_poll;
 
+        pp.get_rpc_pool( ).add_threads( io_poll - 1 );
+        pp.get_io_pool( ).add_threads( rpc_poll );
+
+        logger( lvl::info, "main" ) << "Init all...";
         app.init( );
+        logger( lvl::info, "main" ) << "Start all...";
         app.start( );
+        logger( lvl::info, "main" ) << "Start OK.";
 
-//        auto tuntap = tuntap_transport::create( pp.get_io_service( ) );
-//        auto hdl = common::open_tun( "tun10" );
-//        if( hdl < 0 ) {
-//            std::perror( "tun_alloc" );
-//            return 1;
-//        }
-//        tuntap->get_stream( ).assign( hdl );
-//        tuntap->start_read( );
+        auto tuntap = tuntap_transport::create( pp.get_io_service( ) );
+        auto hdl = common::open_tun( "tun10" );
+        if( hdl < 0 ) {
+            std::perror( "tun_alloc" );
+            return 1;
+        }
+
+        tuntap->get_stream( ).assign( hdl );
+        tuntap->start_read( );
 
         pp.get_io_pool( ).attach( decorator( "M" ) );
 

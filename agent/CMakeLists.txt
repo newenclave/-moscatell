@@ -9,6 +9,7 @@ list(APPEND dependencies
     ${PROJECT_NAME}_common_s
     ${PROJECT_NAME}_protocol
     VTRC_SERVER
+    VTRC_CLIENT
     VTRC_COMMON
     Boost
     )

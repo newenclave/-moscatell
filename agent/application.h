@@ -9,12 +9,15 @@
 #include "vtrc-common/vtrc-pool-pair.h"
 #include "vtrc-common/vtrc-rpc-service-wrapper.h"
 #include "vtrc-common/vtrc-connection-iface.h"
+#include "vtrc-server/vtrc-application.h"
+
+#include "boost/program_options.hpp"
 
 #include <mutex>
 
 namespace msctl { namespace agent {
 
-    class application {
+    class application: public vtrc::server::application {
 
     public:
 
@@ -49,7 +52,7 @@ namespace msctl { namespace agent {
         typedef service_wrapper_impl service_wrapper;
         typedef std::shared_ptr<service_wrapper> service_wrapper_sptr;
 
-        typedef vtrc::function<
+        typedef std::function<
             service_wrapper_sptr ( application *,
                                    vtrc::common::connection_iface_wptr )
         > service_getter_type;
@@ -63,12 +66,12 @@ namespace msctl { namespace agent {
         std::map<std::string, service_getter_type>   services_;
         std::mutex                                   services_lock_;
         common::subsys_root                          subsystems_;
+        boost::program_options::variables_map        cmd_options_;
 
     public:
 
         application( vtrc::common::pool_pair &pp );
         ~application( );
-
 
         typedef vtrc::common::rpc_service_wrapper     parent_service_type;
         typedef vtrc::shared_ptr<parent_service_type> parent_service_sptr;
@@ -106,6 +109,15 @@ namespace msctl { namespace agent {
             subsystems_.init( );
         }
 
+        boost::program_options::variables_map &cmd_opts( )
+        {
+            return cmd_options_;
+        }
+
+        const boost::program_options::variables_map &cmd_opts( ) const
+        {
+            return cmd_options_;
+        }
 
         static std::uint64_t now( );
         static std::uint64_t tick_count( );

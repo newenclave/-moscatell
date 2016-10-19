@@ -16,7 +16,6 @@ namespace msctl { namespace common {
 
         virtual ~subsys_iface( ) { }
 
-        virtual std::string name( ) const = 0;
         virtual void init( )              = 0;
         virtual void start( )             = 0;
         virtual void stop( )              = 0;

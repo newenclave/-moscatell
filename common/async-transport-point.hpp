@@ -9,7 +9,7 @@
 #include <string>
 #include <queue>
 
-namespace async_transport {
+namespace msctl { namespace async_transport {
 
     template <typename ST>
     class point_iface: public std::enable_shared_from_this<point_iface<ST> > {
@@ -387,6 +387,6 @@ namespace async_transport {
 
     };
 
-}
+}}
 
 #endif // ASYNC_TRANSPORT_POINT_HPP

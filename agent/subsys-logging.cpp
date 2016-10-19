@@ -770,7 +770,7 @@ namespace msctl { namespace agent {
     logging::shared_type logging::create(application *app)
     {
         auto res = create(app, std::vector<std::string>(), 3);
-        res->add_logger_output( "-" );
+        //res->add_logger_output( "-" );
         return res;
     }
 
@@ -786,11 +786,6 @@ namespace msctl { namespace agent {
         impl_->log_.dispatch( [this, name]( ) {
             impl_->del_logger_output( name );
         } );
-    }
-
-    std::string logging::name( )  const
-    {
-        return "logging";
     }
 
     void logging::init( )

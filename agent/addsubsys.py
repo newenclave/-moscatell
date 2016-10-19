@@ -22,14 +22,14 @@ namespace msctl { namespace agent {
     public:
 
         %ss-name%( application *app );
-        std::shared_ptr<%ss-name%> create( application *app );
-
-    private:
-
-        std::string name( ) const override
+        static std::shared_ptr<%ss-name%> create( application *app );
+        static const char *name( ) 
         {
             return "%ss-name%";
         }
+
+    private:
+
         void init( )  override;
         void start( ) override;
         void stop( )  override;
@@ -58,12 +58,16 @@ namespace msctl { namespace agent {
     struct %ss-name%::impl {
         application *app_;
         %ss-name%      *parent_;
+        logger_impl &log_; 
+        impl( application *app )
+            :app_(app)
+            ,log_(app_->log( ))
+        { }
     };
 
     %ss-name%::%ss-name%( application *app )
-        :impl_(new impl)
+        :impl_(new impl(app))
     {
-        impl_->app_ = app;
         impl_->parent_ = this;
     }
 
@@ -82,7 +86,7 @@ namespace msctl { namespace agent {
     
     std::shared_ptr<%ss-name%> %ss-name%::create( application *app )
     {
-        return std::make_shared<%%ss-name>( app );
+        return std::make_shared<%ss-name%>( app );
     }
 }}
 

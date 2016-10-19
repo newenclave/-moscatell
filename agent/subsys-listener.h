@@ -3,6 +3,7 @@
 #define SUBSYS_listener_H
 
 #include "application.h"
+#include "vtrc-common/vtrc-signal-declaration.h"
 
 namespace msctl { namespace agent {
 
@@ -12,14 +13,23 @@ namespace msctl { namespace agent {
         friend struct   impl;
         impl           *impl_;
 
+        VTRC_DECLARE_SIGNAL( on_new_connection,
+                             void ( vtrc::common::connection_iface *,
+                                    const std::string & ) );
+
+        VTRC_DECLARE_SIGNAL( on_stop_connection,
+                             void ( vtrc::common::connection_iface * ));
+
+
     public:
 
         listener( application *app );
         static std::shared_ptr<listener> create( application *app );
+        bool add_server( const std::string &point, const std::string &dev );
 
     private:
 
-        std::string name( ) const override
+        static const char* name( )
         {
             return "listener";
         }

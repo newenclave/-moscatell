@@ -32,7 +32,11 @@ namespace msctl { namespace agent {
 
     public:
 
-        std::string name( ) const override ;
+        static const char* name( )
+        {
+            return "logging";
+        }
+
         void init( )  override;
         void start( ) override;
         void stop( )  override;
