@@ -94,6 +94,12 @@ namespace msctl { namespace agent {
             subsystems_.subsys_add<S>( this, std::forward<Agrs>(args)... );
         }
 
+        template <typename T>
+        T &subsys( )
+        {
+            return subsystems_.subsys<T>( );
+        }
+
         void start( )
         {
             subsystems_.start( );

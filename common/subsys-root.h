@@ -7,6 +7,7 @@
 
 #include "subsys-iface.h"
 #include "utilities.h"
+#include "assert.h"
 
 namespace msctl { namespace common {
 
