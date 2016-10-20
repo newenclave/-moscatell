@@ -102,6 +102,7 @@ namespace msctl { namespace agent {
                 rpc::tuntap::push_req req;
                 req.set_value( data, length );
                 for( auto &p: points_ ) {
+                    std::cout << "send data to client channel\n";
                     p.second->call_request( &server_stub::push, &req );
                 }
             }
@@ -121,6 +122,7 @@ namespace msctl { namespace agent {
                 auto svc = std::make_shared<server_wrapper>
                                     (create_event_channel(clntptr), true );
 
+                std::cout << "add client channel\n";
                 auto res = points_.emplace( std::make_pair( id, svc ) );
                 svc->channel( )->set_flag( vcomm::rpc_channel::DISABLE_WAIT );
 
