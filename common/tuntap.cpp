@@ -115,54 +115,56 @@ namespace msctl { namespace common {
 
     addres_mask_v6 get_v6( const std::string &dev )
     {
-        struct ifreq ifr;
-        struct in6_ifreq ifr6;
+        return addres_mask_v6( );
 
-        memset( &ifr, 0, sizeof(ifr) );
-        memset( &ifr6, 0, sizeof(ifr6) );
+//        struct ifreq ifr;
+//        struct in6_ifreq ifr6;
 
-        strncpy( ifr.ifr_name, dev.c_str( ), IFNAMSIZ );
+//        memset( &ifr, 0, sizeof(ifr) );
+//        memset( &ifr6, 0, sizeof(ifr6) );
 
-        fd_keeper s(socket(AF_INET, SOCK_DGRAM, 0));
+//        strncpy( ifr.ifr_name, dev.c_str( ), IFNAMSIZ );
 
-        if( s < 0 )  {
-            return addres_mask_v6( );
-        }
+//        fd_keeper s(socket(AF_INET, SOCK_DGRAM, 0));
 
-        if( ioctl( s, SIOGIFINDEX, static_cast<void *>(&ifr) ) < 0 ) {
-            //std::perror( "v6 SIOGIFINDEX" );
-            return addres_mask_v6( );
-        }
-        std::cout << "det dev ID: " << dev << " "
-                  << ifr.ifr_ifindex << "\n";
+//        if( s < 0 )  {
+//            return addres_mask_v6( );
+//        }
 
-        ifr6.ifr6_ifindex = ifr.ifr_ifindex;
-        ifr6.ifr6_prefixlen = 64;
+//        if( ioctl( s, SIOGIFINDEX, static_cast<void *>(&ifr) ) < 0 ) {
+//            //std::perror( "v6 SIOGIFINDEX" );
+//            return addres_mask_v6( );
+//        }
+//        std::cout << "det dev ID: " << dev << " "
+//                  << ifr.ifr_ifindex << "\n";
 
-        if( ioctl( s, SIOCGIFADDR, static_cast<void *>(&ifr6) ) < 0 ) {
-            //std::perror( "v6 SIOCGIFADDR" );
-            return addres_mask_v6( );
-        }
+//        ifr6.ifr6_ifindex = ifr.ifr_ifindex;
+//        ifr6.ifr6_prefixlen = 64;
 
-        sockaddr_in6 * sa6 = reinterpret_cast<sockaddr_in6 *>(&ifr6.ifr6_addr);
-        boost::asio::ip::address_v6::bytes_type bytes;
-        std::copy( &sa6->sin6_addr.s6_addr[0],
-                   &sa6->sin6_addr.s6_addr[bytes.max_size( )],
-                   bytes.begin( ) );
-        auto addr = boost::asio::ip::address_v6(bytes);
+//        if( ioctl( s, SIOCGIFADDR, static_cast<void *>(&ifr6) ) < 0 ) {
+//            //std::perror( "v6 SIOCGIFADDR" );
+//            return addres_mask_v6( );
+//        }
 
-        if( ioctl( s, SIOCGIFNETMASK, static_cast<void *>(&ifr6) ) < 0 ) {
-            //std::perror( "v6 SIOCGIFNETMASK" );
-            return addres_mask_v6( );
-        }
+//        sockaddr_in6 * sa6 = reinterpret_cast<sockaddr_in6 *>(&ifr6.ifr6_addr);
+//        boost::asio::ip::address_v6::bytes_type bytes;
+//        std::copy( &sa6->sin6_addr.s6_addr[0],
+//                   &sa6->sin6_addr.s6_addr[bytes.max_size( )],
+//                   bytes.begin( ) );
+//        auto addr = boost::asio::ip::address_v6(bytes);
 
-        sa6 = reinterpret_cast<sockaddr_in6 *>(&ifr6.ifr6_addr);
-        std::copy( &sa6->sin6_addr.s6_addr[0],
-                   &sa6->sin6_addr.s6_addr[bytes.max_size( )],
-                   bytes.begin( ) );
-        auto mask = boost::asio::ip::address_v6(bytes);
+//        if( ioctl( s, SIOCGIFNETMASK, static_cast<void *>(&ifr6) ) < 0 ) {
+//            //std::perror( "v6 SIOCGIFNETMASK" );
+//            return addres_mask_v6( );
+//        }
 
-        return std::make_pair( addr, mask );
+//        sa6 = reinterpret_cast<sockaddr_in6 *>(&ifr6.ifr6_addr);
+//        std::copy( &sa6->sin6_addr.s6_addr[0],
+//                   &sa6->sin6_addr.s6_addr[bytes.max_size( )],
+//                   bytes.begin( ) );
+//        auto mask = boost::asio::ip::address_v6(bytes);
+
+//        return std::make_pair( addr, mask );
     }
 
     iface_address_pair get_iface_address( const std::string &dev )
