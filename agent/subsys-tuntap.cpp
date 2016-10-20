@@ -323,7 +323,7 @@ namespace msctl { namespace agent {
             if( f != servers_.end( ) ) {
                 f->second->add_client( c );
                 c->set_user_data( f->second.get( ) );
-                router_[reinterpret_cast<std::uintptr_t>(c)] = device;
+                router_[reinterpret_cast<std::uintptr_t>(c)] = f->second;
                 LOGINF << "Adding client for device '" << dev << "'";
             } else {
                 LOGINF << "Crteate device '" << dev << "'";
