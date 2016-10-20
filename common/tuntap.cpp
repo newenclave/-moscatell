@@ -68,9 +68,9 @@ namespace msctl { namespace common {
         }
 
         auto add = get_iface_address( dev );
-        std::cout << "v4: " << add.first.first.to_string( )
-                  << " v6: " << add.second.first.to_string( )
-                  << "\n";
+//        std::cout << "v4: " << add.first.first.to_string( )
+//                  << " v6: " << add.second.first.to_string( )
+//                  << "\n";
 
         return fd;
     }
@@ -130,7 +130,7 @@ namespace msctl { namespace common {
         }
 
         if( ioctl( s, SIOGIFINDEX, static_cast<void *>(&ifr) ) < 0 ) {
-            std::perror( "v6 SIOGIFINDEX" );
+            //std::perror( "v6 SIOGIFINDEX" );
             return addres_mask_v6( );
         }
         std::cout << "det dev ID: " << dev << " "
@@ -140,7 +140,7 @@ namespace msctl { namespace common {
         ifr6.ifr6_prefixlen = 64;
 
         if( ioctl( s, SIOCGIFADDR, static_cast<void *>(&ifr6) ) < 0 ) {
-            std::perror( "v6 SIOCGIFADDR" );
+            //std::perror( "v6 SIOCGIFADDR" );
             return addres_mask_v6( );
         }
 
@@ -152,7 +152,7 @@ namespace msctl { namespace common {
         auto addr = boost::asio::ip::address_v6(bytes);
 
         if( ioctl( s, SIOCGIFNETMASK, static_cast<void *>(&ifr6) ) < 0 ) {
-            std::perror( "v6 SIOCGIFNETMASK" );
+            //std::perror( "v6 SIOCGIFNETMASK" );
             return addres_mask_v6( );
         }
 

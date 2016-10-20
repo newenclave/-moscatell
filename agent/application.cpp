@@ -50,13 +50,14 @@ namespace msctl { namespace agent {
         application::wrap_service( vcomm::connection_iface_wptr cl,
                                    service_wrapper_impl::service_sptr serv )
     {
-        return std::make_shared<application::service_wrapper>(this, cl, serv);
+        return std::make_shared<application::service_wrapper>( this, cl, serv );
     }
 
 /////////////////////////////
 
     application::application(vtrc::common::pool_pair &pp)
-        :pp_(pp)
+        :vtrc::server::application(pp)
+        ,pp_(pp)
         ,logger_(pp.get_io_service( ), logger_impl::level::debug)
     {
         s_time_point = application::now( );
@@ -105,6 +106,21 @@ namespace msctl { namespace agent {
         auto f = services_.find( name );
         if( f != services_.end( ) ) {
             services_.erase( f );
+        }
+    }
+
+    application::parent_service_sptr
+        application::get_service_by_name ( vcomm::connection_iface* c,
+                                           const std::string &name )
+    {
+        vtrc::lock_guard<vtrc::mutex> lck( services_lock_ );
+
+        auto f = services_.find( name );
+
+        if( f != services_.end( ) ) {
+            return f->second( this, c->shared_from_this( ) );
+        } else {
+            return application::service_wrapper_sptr( );
         }
     }
 

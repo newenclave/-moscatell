@@ -385,6 +385,12 @@ namespace msctl { namespace async_transport {
             post_close( );
         }
 
+        template <typename Func>
+        void dispatch( Func &&call )
+        {
+            write_dispatcher_.post( std::forward<Func>(call) );
+        }
+
     };
 
 }}

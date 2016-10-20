@@ -44,7 +44,7 @@ namespace {
     protected:
 
         tuntap_transport( ba::io_service &ios )
-            :transport(ios, 4096, transport::OPT_DISPATCH_READ )
+            :transport(ios, 2048, transport::OPT_DISPATCH_READ )
         { }
 
         void on_read( const char *data, size_t length ) override
@@ -151,6 +151,11 @@ int main( int argc, const char **argv )
 
         app.cmd_opts( ) = create_cmd_params( argc, argv, options );
         add_all( &app );
+
+        app.subsys<agent::logging>( ).add_logger_output( "-" );
+        app.subsys<agent::listener>( ).add_server( "0.0.0.0:11447", "tun11" );
+        app.subsys<agent::listener>( ).start_all( );
+
         auto &opts = app.cmd_opts( );
 
         if( opts.count( "daemon" ) )  {
@@ -163,7 +168,7 @@ int main( int argc, const char **argv )
         }
 
         auto io_poll = opts["io-pool-size"].as<std::uint32_t>( );
-        auto rpc_poll = opts["io-pool-size"].as<std::uint32_t>( );
+        auto rpc_poll = opts["rpc-pool-size"].as<std::uint32_t>( );
 
         io_poll  = io_poll  ? io_poll  : 1;
         rpc_poll = rpc_poll ? rpc_poll : 1;
@@ -178,7 +183,7 @@ int main( int argc, const char **argv )
                                     << " RPC: " << rpc_poll;
 
         pp.get_rpc_pool( ).add_threads( io_poll - 1 );
-        pp.get_io_pool( ).add_threads( rpc_poll );
+        pp.get_io_pool( ).add_threads(  rpc_poll );
 
         logger( lvl::info, "main" ) << "Init all...";
         app.init( );
@@ -186,15 +191,17 @@ int main( int argc, const char **argv )
         app.start( );
         logger( lvl::info, "main" ) << "Start OK.";
 
-        auto tuntap = tuntap_transport::create( pp.get_io_service( ) );
-        auto hdl = common::open_tun( "tun10" );
-        if( hdl < 0 ) {
-            std::perror( "tun_alloc" );
-            return 1;
-        }
+        app.subsys<agent::clients>( ).add_client( "127.0.0.1:11447", "tun10" );
 
-        tuntap->get_stream( ).assign( hdl );
-        tuntap->start_read( );
+//        auto tuntap = tuntap_transport::create( pp.get_io_service( ) );
+//        auto hdl = common::open_tun( "tun10" );
+//        if( hdl < 0 ) {
+//            std::perror( "tun_alloc" );
+//            return 1;
+//        }
+
+//        tuntap->get_stream( ).assign( hdl );
+//        tuntap->start_read( );
 
         pp.get_io_pool( ).attach( decorator( "M" ) );
 

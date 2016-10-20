@@ -26,6 +26,7 @@ namespace msctl { namespace agent {
         listener( application *app );
         static std::shared_ptr<listener> create( application *app );
         bool add_server( const std::string &point, const std::string &dev );
+        void start_all( );
 
     private:
 

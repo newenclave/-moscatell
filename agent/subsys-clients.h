@@ -31,6 +31,7 @@ namespace msctl { namespace agent {
         }
 
         bool add_client( const std::string &point, const std::string &dev );
+        void start_all( );
 
     private:
 

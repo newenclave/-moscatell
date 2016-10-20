@@ -88,6 +88,11 @@ namespace msctl { namespace agent {
 
         void unregister_service_factory( const std::string &name );
 
+        parent_service_sptr get_service_by_name(
+                                      vtrc::common::connection_iface* c,
+                                      const std::string &service_name );
+
+        ////////////// SUBSYSTEMS //////////////
         template <typename S, typename ...Agrs>
         void subsys_add( Agrs && ...args )
         {

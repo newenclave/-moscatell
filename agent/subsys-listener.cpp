@@ -52,14 +52,16 @@ namespace msctl { namespace agent {
             :log_(log)
         { }
 
-        void on_start( )
+        void on_start( const std::string &p )
         {
-
+            LOGINF << "Point '" << p << "' was started.";
+                      ;
         }
 
-        void on_stop( )
+        void on_stop( const std::string &p )
         {
-
+            LOGINF << "Point '" << p << "' was stopped.";
+                      ;
         }
 
         void on_accept_failed( const VTRC_SYSTEM::error_code &err,
@@ -77,12 +79,14 @@ namespace msctl { namespace agent {
         {
             LOGINF << "Add connection: '" << c->name( ) << "'"
                    << " for device '" << dev << "'";
+            parent_->get_on_new_connection( )( c, dev );
         }
 
         void on_stop_connection( vcomm::connection_iface *c,
                                  const std::string & /*dev*/ )
         {
             LOGINF << "Remove connection: '" << c->name( ) << "'";
+            parent_->get_on_stop_connection( )( c );
         }
 
         bool add( const std::string &point, const std::string &dev )
@@ -105,8 +109,15 @@ namespace msctl { namespace agent {
 
                 LOGINF << "Adding '" << point << "' for device " << dev;
 
-                res->on_start_connect( [this](  ) { this->on_start( ); } );
-                res->on_stop_connect ( [this](  ) { this->on_stop ( ); } );
+                res->on_start_connect(
+                    [this, point](  ) {
+                        this->on_start( point );
+                    } );
+
+                res->on_stop_connect (
+                    [this, point](  ) {
+                        this->on_stop( point );
+                    } );
 
                 res->on_accept_failed_connect(
                     [this, point, dev]( const VTRC_SYSTEM::error_code &err ) {
@@ -131,6 +142,15 @@ namespace msctl { namespace agent {
             return false;
         }
 
+        void start_all( )
+        {
+            std::lock_guard<std::mutex> lck(points_lock_);
+            for( auto &p: points_ ) {
+                LOGINF << "Starting '" << p.first << "'...";
+                p.second.point->start( );
+                LOGINF << "Ok.";
+            }
+        }
     };
 
     listener::listener( application *app )
@@ -161,6 +181,11 @@ namespace msctl { namespace agent {
     bool listener::add_server(const std::string &point, const std::string &dev)
     {
         return impl_->add( point, dev );
+    }
+
+    void listener::start_all( )
+    {
+        return impl_->start_all(  );
     }
 
 }}

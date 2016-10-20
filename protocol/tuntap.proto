@@ -1,0 +1,23 @@
+package msctl.rpc.tuntap;
+
+import "common.proto";
+
+option cc_generic_services = true;
+
+message route_add_req { }
+message route_add_res { }
+
+message push_req {
+    optional bytes value = 1;
+}
+
+message push_res { }
+
+service server_instance {
+    rpc route_add( route_add_req ) returns ( route_add_res );
+    rpc push( push_req ) returns ( push_res );
+}
+
+service client_instance {
+    rpc push( push_req ) returns ( push_res );
+}

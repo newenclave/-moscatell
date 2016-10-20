@@ -38,9 +38,9 @@ namespace msctl { namespace agent {
     using clients_map = std::map<std::string, client_info>;
 
     struct clients::impl {
-        application *app_;
+        application  *app_;
         clients      *parent_;
-        logger_impl &log_; 
+        logger_impl  &log_;
 
         clients_map  clients_;
         std::mutex   clients_lock_;
@@ -57,6 +57,7 @@ namespace msctl { namespace agent {
             LOGERR << "Client for '" << point << "' failed to init; "
                    << " error: " << errs.code( )
                    << " (" << errs.additional( ) << ")"
+                   << "; " << mesg
                       ;
         }
 
@@ -111,7 +112,26 @@ namespace msctl { namespace agent {
                     this->on_disconnect( clnt_ptr, point );
                 } );
 
-            return false;
+            bool failed = false;
+            if( inf.is_local( ) ) {
+                clnt->connect( inf.addpess );
+            } else if( inf.is_ip( ) ) {
+                clnt->connect( inf.addpess, inf.service );
+            } else {
+                LOGERR << "Failed to add client '"
+                       << point << "'; Bad format";
+                failed = true;
+            }
+
+            std::lock_guard<std::mutex> lck(clients_lock_);
+            clients_[point] = client_info( clnt, dev );
+
+            return !failed;
+        }
+
+        void start_all( )
+        {
+
         }
 
     };
@@ -144,6 +164,9 @@ namespace msctl { namespace agent {
     {
         return impl_->add( point, dev );
     }
-}}
 
-		
+    void clients::start_all( )
+    {
+        impl_->start_all( );
+    }
+}}
