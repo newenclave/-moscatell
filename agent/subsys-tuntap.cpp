@@ -124,7 +124,7 @@ namespace msctl { namespace agent {
                                     (create_event_channel(clntptr), true );
 
                 std::cout << "add client channel\n";
-                auto res = points_.emplace( std::make_pair( id, svc ) );
+                auto res = points_[id] = svc;
                 svc->channel( )->set_flag( vcomm::rpc_channel::DISABLE_WAIT );
 
             }
