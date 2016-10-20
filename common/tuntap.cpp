@@ -10,7 +10,7 @@
 #include <fcntl.h>
 #include <netinet/in.h>
 
-#include <linux/ipv6.h>
+//#include <linux/ipv6.h>
 #include <linux/ip.h>
 
 #include "tuntap.h"
