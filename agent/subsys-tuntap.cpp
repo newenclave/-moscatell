@@ -218,14 +218,14 @@ namespace msctl { namespace agent {
                 vcomm::closure_holder done_holder( done );
                 LOGINF << "Server got data: "
                        << request->value( ).size( ) << " bytes; ";
-//                auto clnt = client_.lock( );
-//                auto dev = reinterpret_cast<server_transport *>(clnt->user_data( ));
-//                if( dev ) {
-//                    dev->write( request->value( ) );
-//                } else {
-//                    auto hex = utilities::bin2hex( request->value( ) );
-//                    LOGDBG << hex;
-//                }
+                auto clnt = client_.lock( );
+                auto dev = reinterpret_cast<server_transport *>(clnt->user_data( ));
+                if( dev ) {
+                    dev->write( request->value( ) );
+                } else {
+                    auto hex = utilities::bin2hex( request->value( ) );
+                    LOGDBG << hex;
+                }
             }
 
         };
