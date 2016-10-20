@@ -27,11 +27,11 @@ namespace msctl { namespace agent {
 
     logger_impl *gs_logger = nullptr;
 
-    using client_stub = rpc::tuntap::server_instance_Stub;
+    using client_stub    = rpc::tuntap::server_instance_Stub;
     using client_wrapper = vcomm::stub_wrapper<client_stub,
                                                vcomm::rpc_channel>;
 
-    using server_stub = rpc::tuntap::client_instance_Stub;
+    using server_stub    = rpc::tuntap::client_instance_Stub;
     using server_wrapper = vcomm::stub_wrapper<server_stub,
                                                vcomm::rpc_channel>;
     using server_wrapper_sptr = std::shared_ptr<server_wrapper>;
@@ -122,11 +122,7 @@ namespace msctl { namespace agent {
                                     (create_event_channel(clntptr), true );
 
                 auto res = points_.emplace( std::make_pair( id, svc ) );
-                if( res.second ) {
-                    res.first->second
-                            ->channel( )
-                            ->set_flag( vcomm::rpc_channel::DISABLE_WAIT );
-                }
+                svc->channel( )->set_flag( vcomm::rpc_channel::DISABLE_WAIT );
 
             }
 
@@ -243,13 +239,17 @@ namespace msctl { namespace agent {
         public:
             cnt_impl( client_transport::shared_type device )
                 :device_(device)
-            {  }
+            {
+                std::cout << "client Create service\n";
+            }
 
             void push( ::google::protobuf::RpcController*   /*controller*/,
                        const ::msctl::rpc::tuntap::push_req* request,
                        ::msctl::rpc::tuntap::push_res*      /*response*/,
                        ::google::protobuf::Closure* done) override
             {
+                std::cout << "Got from server " << request->value( ).size( )
+                          << " bytes\n";
                 vcomm::closure_holder done_holder( done );
                 device_->write( request->value( ) );
             }
