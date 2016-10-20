@@ -101,7 +101,7 @@ namespace {
 
             ("daemon,D", "run process as daemon")
 
-            ("name,n", po::value<std::string>( )->default_value(""),
+            ("name,n", po::value<std::string>( ),
                     "agent name; whatever you want")
 
             ("log,l", po::value<string_list>( ),
@@ -194,7 +194,7 @@ int main( int argc, const char **argv )
         logger( lvl::info, "main" ) << "Start OK.";
 
         if( !opts.count( "name" ) ) {
-            app.subsys<agent::clients>( ).add_client( "10.30.0.40:11447", "tun10" );
+            app.subsys<agent::clients>( ).add_client( "10.3.0.40:11447", "tun10" );
         }
 
 //        auto tuntap = tuntap_transport::create( pp.get_io_service( ) );

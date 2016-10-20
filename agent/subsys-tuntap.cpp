@@ -189,7 +189,10 @@ namespace msctl { namespace agent {
             svc_impl( application *app, vcomm::connection_iface_wptr client )
                 :app_(app)
                 ,client_(client)
-            { }
+            {
+                auto &log_(app->log( ));
+                LOGINF << "Create service for " << client.lock( )->name( );
+            }
 
             static std::string name( )
             {
@@ -240,7 +243,8 @@ namespace msctl { namespace agent {
         public:
             cnt_impl( client_transport::shared_type device )
                 :device_(device)
-            { }
+            {  }
+
             void push( ::google::protobuf::RpcController*   /*controller*/,
                        const ::msctl::rpc::tuntap::push_req* request,
                        ::msctl::rpc::tuntap::push_res*      /*response*/,
@@ -316,7 +320,9 @@ namespace msctl { namespace agent {
             if( f != servers_.end( ) ) {
                 f->second->add_client( c );
                 c->set_user_data( f->second.get( ) );
+                LOGINF << "Adding client for device '" << dev << "'";
             } else {
+                LOGINF << "Crteate device '" << dev << "'";
                 auto device = server_transport::create( app_, dev );
                 if( device ) {
                     vtrc::upgrade_to_unique utu(lck);
@@ -325,6 +331,7 @@ namespace msctl { namespace agent {
                     device->add_client( c );
                     device->start_read( );
                     c->set_user_data( device.get( ) );
+                    LOGINF << "Adding client for device '" << dev << "'";
                 } else {
                     LOGERR << "Failed to open device: " << errno;
                 }
