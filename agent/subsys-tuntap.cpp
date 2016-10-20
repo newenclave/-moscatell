@@ -101,6 +101,7 @@ namespace msctl { namespace agent {
             {
                 rpc::tuntap::push_req req;
                 req.set_value( data, length );
+                std::cout << "Read from device\n";
                 for( auto &p: points_ ) {
                     std::cout << "send data to client channel\n";
                     p.second->call_request( &server_stub::push, &req );
@@ -322,6 +323,7 @@ namespace msctl { namespace agent {
             if( f != servers_.end( ) ) {
                 f->second->add_client( c );
                 c->set_user_data( f->second.get( ) );
+                router_[reinterpret_cast<std::uintptr_t>(c)] = device;
                 LOGINF << "Adding client for device '" << dev << "'";
             } else {
                 LOGINF << "Crteate device '" << dev << "'";
