@@ -254,7 +254,11 @@ namespace msctl { namespace agent {
                 std::cout << "Got from server " << request->value( ).size( )
                           << " bytes\n";
                 vcomm::closure_holder done_holder( done );
-                device_->write( request->value( ) );
+                device_->write_post_notify( request->value( ),
+                [ ](const boost::system::error_code &err)
+                {
+                    std::cout << err.message( ) << "\n";
+                });
             }
             static service_wrapper_sptr create( client_transport::shared_type d)
             {
