@@ -101,7 +101,7 @@ namespace {
 
             ("daemon,D", "run process as daemon")
 
-            ("name,n", po::value<std::string>( ),
+            ("name,n", po::value<std::string>( )->default_value(""),
                     "agent name; whatever you want")
 
             ("log,l", po::value<string_list>( ),
@@ -151,12 +151,14 @@ int main( int argc, const char **argv )
 
         app.cmd_opts( ) = create_cmd_params( argc, argv, options );
         add_all( &app );
+        auto &opts = app.cmd_opts( );
 
         app.subsys<agent::logging>( ).add_logger_output( "-" );
-        app.subsys<agent::listener>( ).add_server( "0.0.0.0:11447", "tun11" );
-        app.subsys<agent::listener>( ).start_all( );
-
-        auto &opts = app.cmd_opts( );
+        if( opts.count( "name" ) ) {
+            app.subsys<agent::listener>( ).add_server( "0.0.0.0:11447",
+                                             opts["name"].as<std::string>( ));
+            app.subsys<agent::listener>( ).start_all( );
+        }
 
         if( opts.count( "daemon" ) )  {
             int res = ::daemon( 1, 0 );
@@ -191,7 +193,9 @@ int main( int argc, const char **argv )
         app.start( );
         logger( lvl::info, "main" ) << "Start OK.";
 
-        app.subsys<agent::clients>( ).add_client( "127.0.0.1:11447", "tun10" );
+        if( !opts.count( "name" ) ) {
+            app.subsys<agent::clients>( ).add_client( "10.30.0.40:11447", "tun10" );
+        }
 
 //        auto tuntap = tuntap_transport::create( pp.get_io_service( ) );
 //        auto hdl = common::open_tun( "tun10" );

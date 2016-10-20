@@ -67,7 +67,7 @@ namespace msctl { namespace common {
             return -1;
         }
 
-        auto add = get_iface_address( dev );
+//        auto add = get_iface_address( dev );
 //        std::cout << "v4: " << add.first.first.to_string( )
 //                  << " v6: " << add.second.first.to_string( )
 //                  << "\n";
