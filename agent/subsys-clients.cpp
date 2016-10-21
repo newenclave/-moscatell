@@ -116,7 +116,7 @@ namespace msctl { namespace agent {
             if( inf.is_local( ) ) {
                 clnt->connect( inf.addpess );
             } else if( inf.is_ip( ) ) {
-                clnt->connect( inf.addpess, inf.service );
+                clnt->connect( inf.addpess, inf.service, true );
             } else {
                 LOGERR << "Failed to add client '"
                        << point << "'; Bad format";

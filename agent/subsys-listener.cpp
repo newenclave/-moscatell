@@ -99,7 +99,7 @@ namespace msctl { namespace agent {
             if( inf.is_local( ) ) {
                 res = local::create( *app_, inf.addpess );
             } else if( inf.is_ip( ) ) {
-                res = tcp::create( *app_, inf.addpess, inf.service );
+                res = tcp::create( *app_, inf.addpess, inf.service, true );
             } else {
                 LOGERR << "Failed to add endpoint '"
                        << point << "'; Bad format";
