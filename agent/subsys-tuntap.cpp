@@ -104,7 +104,11 @@ namespace msctl { namespace agent {
                 std::cout << "Read from device\n";
                 for( auto &p: points_ ) {
                     std::cout << "send data to client channel\n";
-                    p.second->call_request( &server_stub::push, &req );
+                    try {
+                        p.second->call_request( &server_stub::push, &req );
+                    } catch( ... ) {
+                        std::cout << "Error\n";
+                    }
                 }
             }
 
