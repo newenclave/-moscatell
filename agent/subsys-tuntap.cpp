@@ -205,6 +205,10 @@ namespace msctl { namespace agent {
             {
                 vcomm::closure_holder done_holder( done );
                 auto clnt = client_.lock( ); // always valid here
+                auto dev = reinterpret_cast<server_transport *>(clnt->user_data( ));
+                if( dev ) {
+                    dev->add_client( clnt.get( ) );
+                }
                 //auto device = clnt->env( )
             }
 
@@ -308,6 +312,11 @@ namespace msctl { namespace agent {
 
                 std::lock_guard<std::mutex> lck(clients_lock_);
                 clients_.insert( c );
+
+                client_wrapper cl(c->create_channel( ), true);
+                rpc::tuntap::route_add_req req;
+                cl.call_request( &client_stub::route_add, &req );
+
             } else {
                 LOGERR << "Failed to open device: " << errno;
             }
@@ -325,7 +334,6 @@ namespace msctl { namespace agent {
             vtrc::upgradable_lock lck(servers_lock_);
             auto f = servers_.find( dev );
             if( f != servers_.end( ) ) {
-                f->second->add_client( c );
                 c->set_user_data( f->second.get( ) );
                 router_[reinterpret_cast<std::uintptr_t>(c)] = f->second;
                 LOGINF << "Adding client for device '" << dev << "'";
@@ -336,8 +344,6 @@ namespace msctl { namespace agent {
                     vtrc::upgrade_to_unique utu(lck);
                     servers_[dev] = device;
                     router_[reinterpret_cast<std::uintptr_t>(c)] = device;
-                    device->add_client( c );
-                    device->start_read( );
                     c->set_user_data( device.get( ) );
                     LOGINF << "Adding client for device '" << dev << "'";
                 } else {
