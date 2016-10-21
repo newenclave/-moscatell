@@ -149,7 +149,7 @@ namespace msctl { namespace agent {
             void del_client( vcomm::connection_iface *clnt )
             {
                 auto wclnt = clnt->weak_from_this( );
-                dispatch( [this, wclnt]( ) { add_client_impl( wclnt ); } );
+                dispatch( [this, wclnt]( ) { del_client_impl( wclnt ); } );
             }
 
 
