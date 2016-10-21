@@ -1,7 +1,7 @@
 
 aux_source_directory(. src_dir)
 
-set( exe_name ${PROJECT_NAME}_server )
+set( exe_name ${PROJECT_NAME}_agent )
 
 add_executable(${exe_name} ${src_dir})
 
