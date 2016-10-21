@@ -59,8 +59,8 @@ namespace msctl { namespace agent {
 
             void on_read( const char *data, size_t length ) override
             {
-                auto &log_ = *gs_logger;
-                LOGINF << "Got data: " << length << " bytes";
+                //auto &log_ = *gs_logger;
+//                LOGINF << "Got data: " << length << " bytes";
                 rpc::tuntap::push_req req;
                 req.set_value( data, length );
                 client_.call_request( &client_stub::push, &req );
@@ -101,13 +101,11 @@ namespace msctl { namespace agent {
             {
                 rpc::tuntap::push_req req;
                 req.set_value( data, length );
-                std::cout << "Read from device\n";
                 for( auto &p: points_ ) {
-                    std::cout << "send data to client channel\n";
                     try {
                         p.second->call_request( &server_stub::push, &req );
                     } catch( ... ) {
-                        std::cout << "Error\n";
+                        ///
                     }
                 }
             }
@@ -127,7 +125,6 @@ namespace msctl { namespace agent {
                 auto svc = std::make_shared<server_wrapper>
                                     (create_event_channel(clntptr), true );
 
-                std::cout << "add client channel " << std::endl;
                 auto res = points_[id] = svc;
                 svc->channel( )->set_flag( vcomm::rpc_channel::DISABLE_WAIT );
 
@@ -142,7 +139,6 @@ namespace msctl { namespace agent {
             void del_client_impl( vcomm::connection_iface *clnt )
             {
                 auto id = reinterpret_cast<std::uintptr_t>( clnt );
-                std::cout << "del client channel " << std::endl;
                 points_.erase( id );
             }
 
@@ -182,7 +178,7 @@ namespace msctl { namespace agent {
         class svc_impl: public rpc::tuntap::server_instance {
 
             application                  *app_;
-            vcomm::connection_iface_wptr  client_;
+            vcomm::connection_iface      *client_;
 
         public:
 
@@ -190,7 +186,7 @@ namespace msctl { namespace agent {
 
             svc_impl( application *app, vcomm::connection_iface_wptr client )
                 :app_(app)
-                ,client_(client)
+                ,client_(client.lock( ).get( ))
             {
                 auto &log_(app->log( ));
                 LOGINF << "Create service for " << client.lock( )->name( );
@@ -201,36 +197,43 @@ namespace msctl { namespace agent {
                 return parent_type::descriptor( )->full_name( );
             }
 
-            void route_add( ::google::protobuf::RpcController* controller,
-                            const ::msctl::rpc::tuntap::route_add_req* request,
-                            ::msctl::rpc::tuntap::route_add_res* response,
+            void route_add( ::google::protobuf::RpcController* /*controller*/,
+                            const ::msctl::rpc::tuntap::route_add_req* /*request*/,
+                            ::msctl::rpc::tuntap::route_add_res* /*response*/,
                             ::google::protobuf::Closure* done) override
             {
                 vcomm::closure_holder done_holder( done );
-                auto clnt = client_.lock( ); // always valid here
-                auto dev = reinterpret_cast<server_transport *>(clnt->user_data( ));
+                auto dev = reinterpret_cast<server_transport *>
+                                                     (client_->user_data( ));
                 if( dev ) {
-                    dev->add_client( clnt.get( ) );
+                    dev->add_client( client_ );
                 }
                 //auto device = clnt->env( )
             }
 
-            void push( ::google::protobuf::RpcController* controller,
+            void push( ::google::protobuf::RpcController*   /*controller*/,
                        const ::msctl::rpc::tuntap::push_req* request,
-                       ::msctl::rpc::tuntap::push_res* response,
+                       ::msctl::rpc::tuntap::push_res*      /*response*/,
                        ::google::protobuf::Closure* done) override
             {
                 static auto &log_ = *gs_logger;
                 vcomm::closure_holder done_holder( done );
+
                 LOGINF << "Server got data: "
                        << request->value( ).size( ) << " bytes; ";
-                auto clnt = client_.lock( );
-                auto dev = reinterpret_cast<server_transport *>(clnt->user_data( ));
+                auto dev = reinterpret_cast<server_transport *>
+                                                        (client_->user_data( ));
                 if( dev ) {
-                    dev->write( request->value( ) );
+                    dev->write_post_notify( request->value( ),
+                    [ ](const boost::system::error_code &err)
+                    {
+                        if( err ) {
+                            //std::cout << "" << err.message( ) << "\n";
+                        }
+                    } );
                 } else {
-                    auto hex = utilities::bin2hex( request->value( ) );
-                    LOGDBG << hex;
+//                    auto hex = utilities::bin2hex( request->value( ) );
+//                    LOGDBG << hex;
                 }
             }
 
