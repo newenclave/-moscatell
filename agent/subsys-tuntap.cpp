@@ -314,6 +314,7 @@ namespace msctl { namespace agent {
                 clients_.insert( c );
 
                 client_wrapper cl(c->create_channel( ), true);
+                cl.channel( )->set_flag( vcomm::rpc_channel::DISABLE_WAIT );
                 rpc::tuntap::route_add_req req;
                 cl.call_request( &client_stub::route_add, &req );
 
@@ -341,10 +342,11 @@ namespace msctl { namespace agent {
                 LOGINF << "Crteate device '" << dev << "'";
                 auto device = server_transport::create( app_, dev );
                 if( device ) {
+                    device->start_read( );
+                    c->set_user_data( device.get( ) );
                     vtrc::upgrade_to_unique utu(lck);
                     servers_[dev] = device;
                     router_[reinterpret_cast<std::uintptr_t>(c)] = device;
-                    c->set_user_data( device.get( ) );
                     LOGINF << "Adding client for device '" << dev << "'";
                 } else {
                     LOGERR << "Failed to open device: " << errno;
