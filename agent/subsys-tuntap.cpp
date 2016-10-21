@@ -198,9 +198,9 @@ namespace msctl { namespace agent {
             }
 
             void route_add( ::google::protobuf::RpcController* /*controller*/,
-                            const ::msctl::rpc::tuntap::route_add_req* /*request*/,
-                            ::msctl::rpc::tuntap::route_add_res* /*response*/,
-                            ::google::protobuf::Closure* done) override
+                        const ::msctl::rpc::tuntap::route_add_req* /*request*/,
+                        ::msctl::rpc::tuntap::route_add_res* /*response*/,
+                        ::google::protobuf::Closure* done) override
             {
                 vcomm::closure_holder done_holder( done );
                 auto dev = reinterpret_cast<server_transport *>
@@ -253,7 +253,7 @@ namespace msctl { namespace agent {
             cnt_impl( client_transport::shared_type device )
                 :device_(device)
             {
-                std::cout << "client Create service\n";
+                //std::cout << "client Create service\n";
             }
 
             void push( ::google::protobuf::RpcController*   /*controller*/,
@@ -261,13 +261,16 @@ namespace msctl { namespace agent {
                        ::msctl::rpc::tuntap::push_res*      /*response*/,
                        ::google::protobuf::Closure* done) override
             {
-                std::cout << "Got from server " << request->value( ).size( )
-                          << " bytes\n";
+//                std::cout << "Got from server " << request->value( ).size( )
+//                          << " bytes\n";
                 vcomm::closure_holder done_holder( done );
                 device_->write_post_notify( request->value( ),
                 [ ](const boost::system::error_code &err)
                 {
-                    std::cout << err.message( ) << "\n";
+                    if( err ) {
+                        (*gs_logger)(logger_impl::level::error)
+                                << err.message( ) << "\n";
+                    }
                 });
             }
             static service_wrapper_sptr create( client_transport::shared_type d)
