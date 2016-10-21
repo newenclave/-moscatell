@@ -148,10 +148,8 @@ namespace msctl { namespace agent {
 
             void del_client( vcomm::connection_iface *clnt )
             {
-                auto wclnt = clnt->weak_from_this( );
-                dispatch( [this, wclnt]( ) { del_client_impl( wclnt ); } );
+                dispatch( [this, clnt]( ) { del_client_impl( clnt ); } );
             }
-
 
             static
             shared_type create( application *app, const std::string &device )
@@ -347,8 +345,8 @@ namespace msctl { namespace agent {
                 LOGINF << "Crteate device '" << dev << "'";
                 auto device = server_transport::create( app_, dev );
                 if( device ) {
-                    device->start_read( );
                     c->set_user_data( device.get( ) );
+                    device->start_read( );
                     vtrc::upgrade_to_unique utu(lck);
                     servers_[dev] = device;
                     router_[reinterpret_cast<std::uintptr_t>(c)] = device;
