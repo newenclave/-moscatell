@@ -127,7 +127,7 @@ namespace msctl { namespace agent {
                 auto svc = std::make_shared<server_wrapper>
                                     (create_event_channel(clntptr), true );
 
-                std::cout << "add client channel\n";
+                std::cout << "add client channel " << std::endl;
                 auto res = points_[id] = svc;
                 svc->channel( )->set_flag( vcomm::rpc_channel::DISABLE_WAIT );
 
@@ -142,6 +142,7 @@ namespace msctl { namespace agent {
             void del_client_impl( vcomm::connection_iface *clnt )
             {
                 auto id = reinterpret_cast<std::uintptr_t>( clnt );
+                std::cout << "del client channel " << std::endl;
                 points_.erase( id );
             }
 
