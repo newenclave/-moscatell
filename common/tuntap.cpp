@@ -49,6 +49,65 @@ namespace msctl { namespace common {
         }
     };
 
+    int setip_v4( const char *devname, const char *ip_addr )
+    {
+        struct ifreq ifr;
+        struct sockaddr_in addr;
+        int stat, s;
+
+        memset( &ifr, 0, sizeof(ifr) );
+        memset( &addr, 0, sizeof(addr) );
+        strncpy(ifr.ifr_name, devname, IFNAMSIZ);
+
+        addr.sin_family = AF_INET;
+        s = socket(addr.sin_family, SOCK_DGRAM, 0);
+        if( s < 0 ) {
+            return -1;
+        }
+
+        stat = inet_pton(addr.sin_family, ip_addr, &addr.sin_addr);
+        if (stat == 0) {
+            close( s );
+            return -1;
+        }
+
+        if (stat == -1) {
+            close( s );
+            return -1;
+        }
+
+        if (stat != 1) {
+            close( s );
+            return -1;
+        }
+
+        ifr.ifr_addr = *(struct sockaddr *)&addr;
+
+        char buff[1024];
+        const char *res = inet_ntop( AF_INET, &addr.sin_addr,
+                                     buff, sizeof(buff) );
+        if( res == NULL ) {
+            close( s );
+            return -1;
+        } else {
+            //printf("main = %s, addr = %s\n",in.dev.ip_addr, buff);
+        }
+
+        if (ioctl(s, SIOCSIFADDR, (caddr_t) &ifr) < 0 ) {
+            close( s );
+            return -1;
+        }
+        return 0;
+    }
+
+    /// for UP
+    /// ioctl(sockfd, SIOCGIFFLAGS, &ifr);
+    /// ifr.ifr_flags |= IFF_UP | IFF_RUNNING;
+    /// ioctl(sockfd, SIOCSIFFLAGS, &ifr);
+    ///
+    /// For mask
+    /// SIOCSIFNETMASK same params SIOCSIFADDR has
+
     int opentuntap( const char *dev, int flags )
     {
         const char *clonedev = "/dev/net/tun";
