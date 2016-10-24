@@ -140,21 +140,16 @@ namespace msctl { namespace agent {
                 dispatch( [this, wclnt]( ) { add_client_impl( wclnt ); } );
             }
 
-            void del_client_impl( vcomm::connection_iface *clnt,
-                                  empty_callback cb )
+            void del_client_impl( vcomm::connection_iface *clnt )
             {
                 auto id = reinterpret_cast<std::uintptr_t>( clnt );
                 points_.erase( id );
-                if( points_.empty( ) ) {
-                    close( );
-                    cb( );
-                }
             }
 
-            void del_client( vcomm::connection_iface *clnt, empty_callback cb )
+            void del_client( vcomm::connection_iface *clnt  )
             {
-                dispatch( [this, clnt, cb]( ) {
-                    del_client_impl( clnt, cb );
+                dispatch( [this, clnt ]( ) {
+                    del_client_impl( clnt );
                 } );
             }
 
@@ -387,17 +382,7 @@ namespace msctl { namespace agent {
             auto id = reinterpret_cast<std::uintptr_t>(c);
             auto f = router_.find( id);
             if( f != router_.end( ) ) {
-                auto device = f->second;
-                f->second->del_client( c, [this, device](  ) {
-                    vtrc::upgradable_lock lck(servers_lock_);
-                    for( auto &s: servers_ ) {
-                        if( s.second == device ) {
-                            vtrc::upgrade_to_unique ulck(lck);
-                            servers_.erase( s.first );
-                            break;
-                        }
-                    }
-                } );
+                f->second->del_client( c );
             }
         }
 
