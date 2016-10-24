@@ -57,6 +57,9 @@ namespace msctl { namespace agent {
                 client_.channel( )->set_flag( vcomm::rpc_channel::DISABLE_WAIT);
             }
 
+            ~client_transport( )
+            { }
+
             void on_read( const char *data, size_t length ) override
             {
                 //auto &log_ = *gs_logger;
@@ -92,6 +95,7 @@ namespace msctl { namespace agent {
 
             using route_map = std::map<ba::ip::address, server_wrapper>;
             using parent_type = common::tuntap_transport;
+            using empty_callback = std::function<void ()>;
 
             server_transport( ba::io_service &ios )
                 :parent_type(ios, 2048, parent_type::OPT_DISPATCH_READ)
@@ -125,7 +129,7 @@ namespace msctl { namespace agent {
                 auto svc = std::make_shared<server_wrapper>
                                     (create_event_channel(clntptr), true );
 
-                auto res = points_[id] = svc;
+                points_[id] = svc;
                 svc->channel( )->set_flag( vcomm::rpc_channel::DISABLE_WAIT );
 
             }
@@ -136,15 +140,22 @@ namespace msctl { namespace agent {
                 dispatch( [this, wclnt]( ) { add_client_impl( wclnt ); } );
             }
 
-            void del_client_impl( vcomm::connection_iface *clnt )
+            void del_client_impl( vcomm::connection_iface *clnt,
+                                  empty_callback cb )
             {
                 auto id = reinterpret_cast<std::uintptr_t>( clnt );
                 points_.erase( id );
+                if( points_.empty( ) ) {
+                    close( );
+                    cb( );
+                }
             }
 
-            void del_client( vcomm::connection_iface *clnt )
+            void del_client( vcomm::connection_iface *clnt, empty_callback cb )
             {
-                dispatch( [this, clnt]( ) { del_client_impl( clnt ); } );
+                dispatch( [this, clnt, cb]( ) {
+                    del_client_impl( clnt, cb );
+                } );
             }
 
             static
@@ -197,9 +208,9 @@ namespace msctl { namespace agent {
                 return parent_type::descriptor( )->full_name( );
             }
 
-            void route_add( ::google::protobuf::RpcController* /*controller*/,
+            void route_add( ::google::protobuf::RpcController*  /*controller*/,
                         const ::msctl::rpc::tuntap::route_add_req* /*request*/,
-                        ::msctl::rpc::tuntap::route_add_res* /*response*/,
+                        ::msctl::rpc::tuntap::route_add_res*      /*response*/,
                         ::google::protobuf::Closure* done) override
             {
                 vcomm::closure_holder done_holder( done );
@@ -216,7 +227,7 @@ namespace msctl { namespace agent {
                        ::msctl::rpc::tuntap::push_res*      /*response*/,
                        ::google::protobuf::Closure* done) override
             {
-                static auto &log_ = *gs_logger;
+                static auto &log_(*gs_logger);
                 vcomm::closure_holder done_holder( done );
 
                 LOGINF << "Server got data: "
@@ -252,8 +263,12 @@ namespace msctl { namespace agent {
         public:
             cnt_impl( client_transport::shared_type device )
                 :device_(device)
+            { }
+
+            ~cnt_impl( )
             {
-                //std::cout << "client Create service\n";
+                device_->close( );
+                device_.reset( );
             }
 
             void push( ::google::protobuf::RpcController*   /*controller*/,
@@ -261,8 +276,6 @@ namespace msctl { namespace agent {
                        ::msctl::rpc::tuntap::push_res*      /*response*/,
                        ::google::protobuf::Closure* done) override
             {
-//                std::cout << "Got from server " << request->value( ).size( )
-//                          << " bytes\n";
                 vcomm::closure_holder done_holder( done );
                 device_->write_post_notify( request->value( ),
                 [ ](const boost::system::error_code &err)
@@ -321,6 +334,7 @@ namespace msctl { namespace agent {
 
                 std::lock_guard<std::mutex> lck(clients_lock_);
                 clients_.insert( c );
+                clients_lock_.unlock( );
 
                 client_wrapper cl(c->create_channel( ), true);
                 cl.channel( )->set_flag( vcomm::rpc_channel::DISABLE_WAIT );
@@ -335,7 +349,11 @@ namespace msctl { namespace agent {
         void del_client_point( vclnt::base_sptr c )
         {
             std::lock_guard<std::mutex> lck(clients_lock_);
-            clients_.erase( c );
+            auto f = clients_.find( c );
+            if( f != clients_.end( ) ) {
+                (*f)->erase_all_rpc_handlers( );
+                clients_.erase( f );
+            }
         }
 
         void add_server_point( vcomm::connection_iface *c,
@@ -369,7 +387,17 @@ namespace msctl { namespace agent {
             auto id = reinterpret_cast<std::uintptr_t>(c);
             auto f = router_.find( id);
             if( f != router_.end( ) ) {
-                f->second->del_client( c );
+                auto device = f->second;
+                f->second->del_client( c, [this, device](  ) {
+                    vtrc::upgradable_lock lck(servers_lock_);
+                    for( auto &s: servers_ ) {
+                        if( s.second == device ) {
+                            vtrc::upgrade_to_unique ulck(lck);
+                            servers_.erase( s.first );
+                            break;
+                        }
+                    }
+                } );
             }
         }
 

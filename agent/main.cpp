@@ -195,17 +195,8 @@ int main( int argc, const char **argv )
 
         if( !opts.count( "name" ) ) {
             app.subsys<agent::clients>( ).add_client( "10.3.0.40:11447", "tun10" );
+            app.subsys<agent::clients>( ).start_all( );
         }
-
-//        auto tuntap = tuntap_transport::create( pp.get_io_service( ) );
-//        auto hdl = common::open_tun( "tun10" );
-//        if( hdl < 0 ) {
-//            std::perror( "tun_alloc" );
-//            return 1;
-//        }
-
-//        tuntap->get_stream( ).assign( hdl );
-//        tuntap->start_read( );
 
         pp.get_io_pool( ).attach( decorator( "M" ) );
 

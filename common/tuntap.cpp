@@ -41,6 +41,12 @@ namespace msctl { namespace common {
         {
             return fd_;
         }
+        int release( )
+        {
+            int tmp = fd_;
+            fd_ = -1;
+            return tmp;
+        }
     };
 
     int opentuntap( const char *dev, int flags )
@@ -71,6 +77,17 @@ namespace msctl { namespace common {
 //        std::cout << "v4: " << add.first.first.to_string( )
 //                  << " v6: " << add.second.first.to_string( )
 //                  << "\n";
+
+        flags = fcntl( fd, F_GETFL, 0 );
+        if( flags < 0 ) {
+            close( fd );
+            return -1;
+        }
+
+        if( fcntl( fd, F_SETFL, flags | O_NONBLOCK ) < 0) {
+            close( fd );
+            return -1;
+        }
 
         return fd;
     }
