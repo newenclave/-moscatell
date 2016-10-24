@@ -26,7 +26,6 @@ namespace {
     namespace po         = boost::program_options;
     using posix_stream   = ba::posix::stream_descriptor;
     using transport      = async_transport::point_iface<posix_stream>;
-    using transport_sptr = std::shared_ptr<transport>;
 
     namespace vcomm = vtrc::common;
 
@@ -38,45 +37,6 @@ namespace {
         app->subsys_add<clients>( );
         app->subsys_add<tuntap>( );
     }
-
-    class tuntap_transport: public transport {
-
-    protected:
-
-        tuntap_transport( ba::io_service &ios )
-            :transport(ios, 2048, transport::OPT_DISPATCH_READ )
-        { }
-
-        void on_read( const char *data, size_t length ) override
-        {
-            const iphdr *hdr = reinterpret_cast<const iphdr *>(data);
-            //const ipv6hdr *v6hdr = reinterpret_cast<const iphdr *>(data);
-
-            ba::ip::address_v4 sa(ntohl(hdr->saddr));
-            ba::ip::address_v4 da(ntohl(hdr->daddr));
-            std::cout << "read " << length
-                      << " bytes "
-                      << " from " << sa.to_string( )
-                      << " to " << da.to_string( )
-                      << "\n";
-        }
-
-        void on_write_error( const boost::system::error_code &code ) override
-        {
-            std::cout << "Write error: " << code.value( )
-                      << " " << code.message( ) << "\n";
-            //throw std::runtime_error( code.message( ) );
-        }
-
-    public:
-
-        static transport_sptr create( ba::io_service &ios )
-        {
-            auto new_inst = new tuntap_transport(ios);
-            return transport_sptr(new_inst);
-        }
-
-    };
 
     vcomm::thread_pool::thread_decorator decorator( std::string p )
     {
@@ -194,7 +154,7 @@ int main( int argc, const char **argv )
         logger( lvl::info, "main" ) << "Start OK.";
 
         if( !opts.count( "name" ) ) {
-            app.subsys<agent::clients>( ).add_client( "10.3.0.40:11447", "tun10" );
+            app.subsys<agent::clients>( ).add_client( "212.24.104.31:11447", "tun10" );
             app.subsys<agent::clients>( ).start_all( );
         }
 
