@@ -242,7 +242,10 @@ int main( int argc, const char **argv )
         logger( lvl::info, "main" ) << "Start OK.";
 
         if( !opts.count( "name" ) ) {
-            app.subsys<agent::clients>( ).add_client( "212.24.104.31:443", "tun10" );
+            agent::clients::client_create_info ci = {
+                "212.24.104.31:443", "tun10"
+            };
+            app.subsys<agent::clients>( ).add_client( ci );
             app.subsys<agent::clients>( ).start_all( );
         }
 

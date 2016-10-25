@@ -23,6 +23,11 @@ namespace msctl { namespace agent {
 
     public:
 
+        struct client_create_info {
+            std::string point;
+            std::string device;
+        };
+
         clients( application *app );
         static std::shared_ptr<clients> create( application *app );
         static const char *name( ) 
@@ -30,7 +35,7 @@ namespace msctl { namespace agent {
             return "clients";
         }
 
-        bool add_client( const std::string &point, const std::string &dev );
+        bool add_client( const client_create_info &inf );
         void start_all( );
 
     private:

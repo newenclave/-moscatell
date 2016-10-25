@@ -58,7 +58,6 @@ namespace msctl { namespace agent { namespace cmd {
                 } else if( mk_ ) {
                     std::cout << "Adding device " << device_ << "...";
                     res = common::open_tun( device_, true );
-                    up_ = false;
                     std::cout << (res < 0 ? "FAILED" : "OK") << std::endl;
                     if( res < 0 ) {
                         std::perror( "mktun" );

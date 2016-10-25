@@ -64,7 +64,8 @@ namespace {
                 if( err ) {
                     auto inst = wthis.lock( );
                     if( inst ) {
-                        LOGERR << "Connect failed to " << inst->info;
+                        LOGDBG << "Connect failed to " << inst->info
+                               << "; Restating connect...";
                         inst->start_timer( );
                     }
                 }
@@ -160,9 +161,12 @@ namespace {
             }
         }
 
-        bool add( const std::string &point, const std::string &dev )
+        bool add( const clients::client_create_info &add_info )
         {
-            auto inf  = utilities::get_endpoint_info( point );
+            auto point = add_info.point;
+            auto dev   = add_info.device;
+
+            auto inf  = utilities::get_endpoint_info( add_info.point );
             auto clnt = client_info::create( app_->pools( ) );
             clnt->device = dev;
             auto clnt_wptr = std::weak_ptr<client_info>( clnt );
@@ -239,9 +243,9 @@ namespace {
         return std::make_shared<clients>( app );
     }
 
-    bool clients::add_client( const std::string &point, const std::string &dev)
+    bool clients::add_client( const client_create_info &inf )
     {
-        return impl_->add( point, dev );
+        return impl_->add( inf );
     }
 
     void clients::start_all( )
