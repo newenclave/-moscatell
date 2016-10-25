@@ -27,6 +27,9 @@ namespace msctl { namespace common {
     struct fd_keeper {
         int fd_ = -1;
 
+        fd_keeper( )
+        { }
+
         explicit fd_keeper( int fd )
             :fd_(fd)
         { }
@@ -37,10 +40,12 @@ namespace msctl { namespace common {
                 close( fd_ );
             }
         }
+
         operator int ( )
         {
             return fd_;
         }
+
         int release( )
         {
             int tmp = fd_;
@@ -49,52 +54,80 @@ namespace msctl { namespace common {
         }
     };
 
-    int setip_v4( const char *devname, const char *ip_addr )
+    int set_v4_param( const char *devname, unsigned long code,
+                      std::uint32_t param )
     {
         struct ifreq ifr;
         struct sockaddr_in addr;
-        int stat, s;
+        fd_keeper s;
 
         memset( &ifr, 0, sizeof(ifr) );
         memset( &addr, 0, sizeof(addr) );
         strncpy(ifr.ifr_name, devname, IFNAMSIZ);
 
         addr.sin_family = AF_INET;
-        s = socket(addr.sin_family, SOCK_DGRAM, 0);
-        if( s < 0 ) {
+        s.fd_ = socket(addr.sin_family, SOCK_DGRAM, 0);
+
+        if( s.fd_ < 0 ) {
             return -1;
         }
 
-        stat = inet_pton(addr.sin_family, ip_addr, &addr.sin_addr);
-        if (stat == 0) {
-            close( s );
+        addr.sin_addr.s_addr = param;
+        ifr.ifr_addr = *reinterpret_cast<sockaddr *>(&addr);
+
+        if (ioctl(s, code, (caddr_t) &ifr) < 0 ) {
+            return -1;
+        }
+        return 0;
+    }
+
+    int setip_v4_mask( const char *devname, const char *ip_addr )
+    {
+        boost::system::error_code ec;
+        auto ip = ba::ip::address_v4::from_string( ip_addr, ec );
+        if( ec ) {
+            errno = ec.value( );
+            return -1;
+        }
+        return set_v4_param( devname, SIOCSIFNETMASK, htonl(ip.to_ulong( )) );
+    }
+
+    int setip_v4_mask( const char *devname, std::uint32_t mask )
+    {
+        return set_v4_param( devname, SIOCSIFNETMASK, mask );
+    }
+
+    int setip_v4_addr( const char *devname, const char *ip_addr )
+    {
+        boost::system::error_code ec;
+        auto ip = ba::ip::address_v4::from_string( ip_addr, ec );
+        if( ec ) {
+            errno = ec.value( );
+            return -1;
+        }
+        return set_v4_param( devname, SIOCSIFADDR, htonl(ip.to_ulong( )) );
+    }
+
+    int set_dev_up( const char *devname )
+    {
+        struct ifreq ifr;
+        struct sockaddr_in addr;
+        fd_keeper s;
+
+        memset( &ifr, 0, sizeof(ifr) );
+        memset( &addr, 0, sizeof(addr) );
+        strncpy(ifr.ifr_name, devname, IFNAMSIZ);
+
+        addr.sin_family = AF_INET;
+        s.fd_ = socket(addr.sin_family, SOCK_DGRAM, 0);
+
+        if( s.fd_ < 0 ) {
             return -1;
         }
 
-        if (stat == -1) {
-            close( s );
-            return -1;
-        }
+        ifr.ifr_flags = IFF_UP | IFF_RUNNING;
 
-        if (stat != 1) {
-            close( s );
-            return -1;
-        }
-
-        ifr.ifr_addr = *(struct sockaddr *)&addr;
-
-        char buff[1024];
-        const char *res = inet_ntop( AF_INET, &addr.sin_addr,
-                                     buff, sizeof(buff) );
-        if( res == NULL ) {
-            close( s );
-            return -1;
-        } else {
-            //printf("main = %s, addr = %s\n",in.dev.ip_addr, buff);
-        }
-
-        if (ioctl(s, SIOCSIFADDR, (caddr_t) &ifr) < 0 ) {
-            close( s );
+        if (ioctl(s, SIOCSIFFLAGS, &ifr) < 0 ) {
             return -1;
         }
         return 0;
@@ -104,11 +137,8 @@ namespace msctl { namespace common {
     /// ioctl(sockfd, SIOCGIFFLAGS, &ifr);
     /// ifr.ifr_flags |= IFF_UP | IFF_RUNNING;
     /// ioctl(sockfd, SIOCSIFFLAGS, &ifr);
-    ///
-    /// For mask
-    /// SIOCSIFNETMASK same params SIOCSIFADDR has
 
-    int opentuntap( const char *dev, int flags )
+    int del_persistent( const char *dev, int flags )
     {
         const char *clonedev = "/dev/net/tun";
 
@@ -132,10 +162,34 @@ namespace msctl { namespace common {
             return -1;
         }
 
-//        auto add = get_iface_address( dev );
-//        std::cout << "v4: " << add.first.first.to_string( )
-//                  << " v6: " << add.second.first.to_string( )
-//                  << "\n";
+        ioctl( fd, TUNSETPERSIST, 0 );
+
+        return fd;
+    }
+
+    int opentuntap( const char *dev, int flags, bool persis )
+    {
+        const char *clonedev = "/dev/net/tun";
+
+        struct ifreq ifr;
+        int fd = -1;
+
+        if( (fd = open(clonedev , O_RDWR)) < 0 ) {
+            return fd;
+        }
+
+        memset(&ifr, 0, sizeof(ifr));
+
+        ifr.ifr_flags = flags;
+
+        if (*dev) {
+            strncpy(ifr.ifr_name, dev, IFNAMSIZ);
+        }
+
+        if( ioctl( fd, TUNSETIFF, static_cast<void *>(&ifr) ) < 0 ) {
+            close( fd );
+            return -1;
+        }
 
         flags = fcntl( fd, F_GETFL, 0 );
         if( flags < 0 ) {
@@ -148,17 +202,52 @@ namespace msctl { namespace common {
             return -1;
         }
 
+        if( persis ) {
+            ioctl( fd, TUNSETPERSIST, 1 );
+        }
+
         return fd;
     }
 
-    int open_tun( const std::string &name )
+    int del_tun( const std::string &name )
     {
-        return opentuntap( name.c_str( ), IFF_TUN | IFF_NO_PI );
+        return del_persistent( name.c_str( ), IFF_TUN | IFF_NO_PI );
     }
 
-    int open_tap( const std::string &name )
+    int open_tun(const std::string &name , bool persist )
     {
-        return opentuntap( name.c_str( ), IFF_TAP | IFF_NO_PI );
+        return opentuntap( name.c_str( ), IFF_TUN | IFF_NO_PI, persist );
+    }
+
+    int del_tap( const std::string &name )
+    {
+        return del_persistent( name.c_str( ), IFF_TAP | IFF_NO_PI );
+    }
+
+    int open_tap(const std::string &name, bool persist)
+    {
+        return opentuntap( name.c_str( ), IFF_TAP | IFF_NO_PI, persist );
+    }
+
+    int device_up( const std::string &name )
+    {
+        return set_dev_up( name.c_str( ) );
+    }
+
+    int set_dev_ip4( const std::string &name, const std::string &ip )
+    {
+        return setip_v4_addr( name.c_str( ), ip.c_str( ) );
+    }
+
+    int set_dev_ip4_mask( const std::string &name, const std::string &mask )
+    {
+        return setip_v4_mask( name.c_str( ), mask.c_str( ) );
+    }
+
+    int set_dev_ip4_mask( const std::string &name, std::uint32_t mask )
+    {
+        auto fix_mask = mask == 32 ? 0xFFFFFFFF : ( 1 << mask ) - 1;
+        return setip_v4_mask( name.c_str( ), fix_mask );
     }
 
     addres_mask_v4 get_v4( const std::string &dev )

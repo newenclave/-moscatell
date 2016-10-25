@@ -15,17 +15,23 @@
 #include "subsys.inc"
 
 #include "common/moscatell-lua.h"
+#include "common/cmd-iface.h"
 
 #include "boost/program_options.hpp"
 
 using namespace msctl;
 
+
+namespace msctl { namespace agent { namespace cmd {
+
+    namespace tuntap { void create( common::cmd_map &all ); }
+
+}}}
+
 namespace {
 
-    namespace ba         = boost::asio;
-    namespace po         = boost::program_options;
-    using posix_stream   = ba::posix::stream_descriptor;
-    using transport      = async_transport::point_iface<posix_stream>;
+    namespace ba   = boost::asio;
+    namespace po   = boost::program_options;
 
     namespace vcomm = vtrc::common;
 
@@ -53,6 +59,21 @@ namespace {
         };
     }
 
+    common::cmd_map get_all_command( )
+    {
+        common::cmd_map res;
+        agent::cmd::tuntap::create( res );
+        return res;
+    }
+
+    void fill_cmd_options( po::options_description &desc )
+    {
+        desc.add_options( )
+            ("command,c", po::value<std::string>( ),
+                    "run command;")
+            ;
+    }
+
     void fill_all_options( po::options_description &desc )
     {
         using string_list = std::vector<std::string>;
@@ -64,6 +85,9 @@ namespace {
             ("name,n", po::value<std::string>( ),
                     "agent name; whatever you want")
 
+            ("command,c", po::value<std::string>( ),
+                    "run command;")
+
             ("log,l", po::value<string_list>( ),
                     "files for log output; use '-' for stdout")
 
@@ -73,7 +97,7 @@ namespace {
             ("rpc-pool-size,r", po::value<unsigned>( )->default_value( 1 ),
                     "threads for rpc calls; default = 1")
 
-            ("config,c",    po::value<std::string>( ),
+            ("config,C",    po::value<std::string>( ),
                             "lua script for configure server")
 
             ("key,k", po::value< std::vector< std::string> >( ),
@@ -84,17 +108,65 @@ namespace {
     }
 
     po::variables_map create_cmd_params( int argc, const char **argv,
-                                         po::options_description const &desc )
+                                         po::options_description const &desc,
+                                         bool allow_unreg = true)
     {
         po::variables_map vm;
-        po::parsed_options parsed (
-            po::command_line_parser(argc, argv)
-                .options(desc)
-                //.allow_unregistered( )
-                .run( ));
-        po::store( parsed, vm );
-        po::notify( vm);
+        if( allow_unreg ) {
+            po::parsed_options parsed (
+                po::command_line_parser(argc, argv)
+                    .options(desc)
+                    .allow_unregistered( )
+                    .run( ));
+            po::store( parsed, vm );
+            po::notify( vm);
+        } else {
+            po::parsed_options parsed (
+                po::command_line_parser(argc, argv)
+                    .options(desc)
+                    .run( ));
+            po::store( parsed, vm );
+            po::notify( vm);
+        }
         return vm;
+    }
+
+    int run_command( int argc, const char **argv,
+                     const std::string &name, common::cmd_map &all )
+    {
+        auto r = all.find( name );
+
+        if( r == all.end( ) ) {
+
+            std::cerr << "Invalid command '" << name << "';\n";
+            std::cerr << "Available:\n";
+
+            for( auto &d: all ) {
+                std::cerr << "\t" << d.first << ": "
+                          << d.second->desc( ) << "\n";
+            }
+
+            return 1;
+
+        } else {
+
+            po::options_description desc( std::string("Valid options for '")
+                                        + name + "'");
+
+            desc.add_options( )
+                ("help,?",   "help message")
+            ;
+
+            r->second->opts( desc );
+            auto opts = create_cmd_params( argc, argv, desc, true );
+
+            if( opts.count( "help" ) ) {
+                std::cout << desc;
+                return 0;
+            }
+
+            return r->second->run( opts );
+        }
     }
 }
 
@@ -103,17 +175,33 @@ int main( int argc, const char **argv )
     try {
 
         po::options_description options;
-        fill_all_options( options );
+        fill_cmd_options( options );
 
         agent::thread_prefix::set( "M" );
         vcomm::pool_pair pp(0, 0);
         agent::application app(pp);
 
-        app.cmd_opts( ) = create_cmd_params( argc, argv, options );
+        auto opts = create_cmd_params( argc, argv, options );
+
+        if( opts.count( "command" ) ) {
+            auto cmd = opts["command"].as<std::string>();
+            auto all = get_all_command( );
+            return run_command( argc, argv, cmd, all );
+        }
+
+        po::options_description all_opt;
+        fill_all_options( all_opt );
+        opts = create_cmd_params( argc, argv, all_opt );
+        app.cmd_opts( ) = opts;
         add_all( &app );
-        auto &opts = app.cmd_opts( );
+
+        if( opts.count( "help" ) ) {
+            std::cout << options;
+            return 0;
+        }
 
         app.subsys<agent::logging>( ).add_logger_output( "-" );
+
         if( opts.count( "name" ) ) {
             app.subsys<agent::listener>( ).add_server( "0.0.0.0:11447",
                                              opts["name"].as<std::string>( ));

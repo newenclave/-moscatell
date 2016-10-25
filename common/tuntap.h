@@ -29,10 +29,16 @@ namespace msctl { namespace common {
     using posix_stream = boost::asio::posix::stream_descriptor;
     using tuntap_transport = async_transport::point_iface<posix_stream>;
 
-    int open_tun( const std::string &name );
-    int open_tap( const std::string &name );
+    int open_tun(const std::string &name, bool persist);
+    int open_tap( const std::string &name, bool persist );
+    int device_up( const std::string &name );
 
+    int del_tun( const std::string &name );
+    int del_tap( const std::string &name );
 
+    int set_dev_ip4( const std::string &name, const std::string &ip );
+    int set_dev_ip4_mask(const std::string &name, const std::string &mask );
+    int set_dev_ip4_mask( const std::string &name, std::uint32_t mask );
 
 #else
 

@@ -75,10 +75,14 @@ namespace msctl { namespace agent {
             shared_type create( const std::string &device, vclnt::base *c )
             {
                 using std::make_shared;
-                auto dev  = common::open_tun( device );
+                auto dev  = common::open_tun( device, false );
                 if( dev < 0 ) {
                     return shared_type( );
                 }
+//                if( common::device_up( device ) < 0) {
+//                    return shared_type( );
+//                }
+
                 auto inst = make_shared<client_transport>( c );
                 inst->get_stream( ).assign( dev );
                 return inst;
@@ -157,10 +161,14 @@ namespace msctl { namespace agent {
             shared_type create( application *app, const std::string &device )
             {
                 using std::make_shared;
-                auto dev  = common::open_tun( device );
+                auto dev  = common::open_tun( device, false );
                 if( dev < 0 ) {
                     return shared_type( );
                 }
+//                if( common::device_up( device ) < 0) {
+//                    return shared_type( );
+//                }
+
                 auto inst = make_shared<server_transport>
                                                 ( app->get_io_service( ) );
                 inst->get_stream( ).assign( dev );
