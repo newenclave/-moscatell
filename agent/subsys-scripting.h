@@ -21,7 +21,7 @@ namespace msctl { namespace agent {
             return "scripting";
         }
 
-        void run_config( const std::string &path );
+        void run_config( );
 
     private:
 

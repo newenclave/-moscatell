@@ -92,10 +92,10 @@ namespace {
             ("log,l", po::value<string_list>( ),
                     "files for log output; use '-' for stdout")
 
-            ("io-pool-size,i",  po::value<unsigned>( )->default_value( 1 ),
+            ("io-pool-size,i",  po::value<unsigned>( ),
                     "threads for io operations; default = 1")
 
-            ("rpc-pool-size,r", po::value<unsigned>( )->default_value( 1 ),
+            ("rpc-pool-size,r", po::value<unsigned>( ),
                     "threads for rpc calls; default = 1")
 
             ("config,C",    po::value<std::string>( ),
@@ -201,47 +201,69 @@ int main( int argc, const char **argv )
             return 0;
         }
 
-        app.subsys<agent::logging>( ).add_logger_output( "-" );
+        if( opts.count( "application" ) == 0 )  {
+            int res = ::daemon( 1, 0 );
+            if( -1 == res ) {
+                std::cerr << "::daemon call failed: errno = "
+                          << errno << "\n";
+                std::perror( "::daemon" );
+                return 1;
+            } else if( res != 0 ) {
+                return 0;
+            }
+        }
 
-//        if( opts.count( "application" ) == 0 )  {
-//            int res = ::daemon( 1, 0 );
-//            if( -1 == res ) {
-//                std::cerr << "::daemon call failed: errno = "
-//                          << errno << "\n";
-//                std::perror( "::daemon" );
-//                return 1;
-//            } else if( res != 0 ) {
-//                return 0;
-//            }
-//        }
+        auto handler = [&app]( ) {
+            using lvl = agent::logger_impl::level;
+            try {
+                throw;
+            } catch( const std::exception &ex ) {
+                app.log( )( lvl::error )
+                        << "[poll] Exception @" << std::hex
+                        << std::this_thread::get_id( )
+                        << "; " << ex.what( )
+                        ;
+            } catch( ... ) {
+                app.log( )( lvl::error )
+                        << "[poll] Exception @" << std::hex
+                        << std::this_thread::get_id( )
+                        << "; ..."
+                        ;
+            }
+        };
 
-        auto io_poll = opts["io-pool-size"].as<std::uint32_t>( );
-        auto rpc_poll = opts["rpc-pool-size"].as<std::uint32_t>( );
-
-        io_poll  = io_poll  ? io_poll  : 1;
-        rpc_poll = rpc_poll ? rpc_poll : 1;
+        pp.get_io_pool( ) .assign_exception_handler( handler );
+        pp.get_rpc_pool( ).assign_exception_handler( handler );
 
         pp.get_rpc_pool( ).assign_thread_decorator( decorator( "R" ) );
-        pp.get_io_pool( ).assign_thread_decorator( decorator( "I" ) );
+        pp.get_io_pool( ) .assign_thread_decorator( decorator( "I" ) );
 
         auto &logger = app.log( );
         using lvl = agent::logger_impl::level;
 
+        logger( lvl::info, "main" ) << "Init all...";
+
+        app.init( );
+        app.subsys<agent::scripting>( ).run_config( );
+
+        auto io_poll = app.io_pools( );
+        auto rpc_poll = app.rpc_pools( );
+
+        if( opts.count( "io-pool-size" ) ) {
+            io_poll = opts["io-pool-size"].as<decltype(io_poll)>( );
+            io_poll = io_poll ? io_poll : 1;
+        }
+
+        if( opts.count( "rpc-pool-size" ) ) {
+            rpc_poll = opts["rpc-pool-size"].as<decltype(rpc_poll)>( );
+            rpc_poll = rpc_poll ? rpc_poll : 1;
+        }
+
         logger( lvl::info, "main" ) << "Start threads. IO: " << io_poll
                                     << " RPC: " << rpc_poll;
 
-        pp.get_rpc_pool( ).add_threads( io_poll - 1 );
-        pp.get_io_pool( ).add_threads(  rpc_poll );
-
-        logger( lvl::info, "main" ) << "Init all...";
-        app.init( );
-
-        if( opts.count( "config" ) ) {
-            auto cfg = opts["config"].as<std::string>( );
-            app.subsys<agent::scripting>( ).run_config( cfg );
-        }
-
-        app.subsys<agent::clients>( ).start_all( );
+        pp.get_io_pool( ) .add_threads(  io_poll - 1 );
+        pp.get_rpc_pool( ).add_threads( rpc_poll );
 
         logger( lvl::info, "main" ) << "Start all...";
         app.start( );
@@ -254,9 +276,9 @@ int main( int argc, const char **argv )
         pp.join_all( );
 
     } catch( const std::exception &ex ) {
-        std::cerr << "Error: " << ex.what( );
+        std::cerr << "'main' error: " << ex.what( ) << std::endl;
+        return 1;
     }
-
 
     return 0;
 }

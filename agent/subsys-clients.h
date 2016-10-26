@@ -35,8 +35,7 @@ namespace msctl { namespace agent {
             return "clients";
         }
 
-        bool add_client( const client_create_info &inf );
-        void start_all( );
+        bool add_client( const client_create_info &inf, bool start );
 
     private:
 

@@ -161,7 +161,7 @@ namespace {
             }
         }
 
-        bool add( const clients::client_create_info &add_info )
+        bool add( const clients::client_create_info &add_info, bool auto_start )
         {
             auto point = add_info.point;
             auto dev   = add_info.device;
@@ -199,6 +199,9 @@ namespace {
             if( !failed ) {
                 clnt->info   = inf;
                 clnt->device = dev;
+                if( auto_start ) {
+                    clnt->start_connect( );
+                }
                 std::lock_guard<std::mutex> lck(clients_lock_);
                 clients_[point] = clnt;
             } else {
@@ -230,6 +233,7 @@ namespace {
 
     void clients::start( )
     { 
+        impl_->start_all( );
         impl_->LOGINF << "Started.";
     }
 
@@ -243,13 +247,9 @@ namespace {
         return std::make_shared<clients>( app );
     }
 
-    bool clients::add_client( const client_create_info &inf )
+    bool clients::add_client( const client_create_info &inf, bool start )
     {
-        return impl_->add( inf );
+        return impl_->add( inf, start );
     }
 
-    void clients::start_all( )
-    {
-        impl_->start_all( );
-    }
 }}

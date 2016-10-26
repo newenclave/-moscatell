@@ -675,7 +675,7 @@ namespace msctl { namespace agent {
                                            static_cast<int>(maxl), log_ );
 #ifndef _WIN32
             if( slog ) {
-                openlog( "ferro_remote", 0, LOG_USER );
+                openlog( "moscatell_agent", 0, LOG_USER );
                 syslog_ = true;
             }
 #endif

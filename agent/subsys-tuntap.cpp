@@ -62,7 +62,7 @@ namespace msctl { namespace agent {
 
             void on_read( const char *data, size_t length ) override
             {
-                //auto &log_ = *gs_logger;
+//                auto &log_ = *gs_logger;
 //                LOGINF << "Got data: " << length << " bytes";
                 rpc::tuntap::push_req req;
                 req.set_value( data, length );

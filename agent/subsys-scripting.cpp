@@ -47,6 +47,30 @@ namespace msctl { namespace agent {
             ls.register_call( "print", &lcall_log_print );
         }
 
+        std::uint32_t get_table_value(
+                mlua::state &ls, const std::string &call_name,
+                const mlua::objects::base *table,
+                const char *name, std::uint32_t def )
+        {
+            static auto &log_(gs_application->log( ));
+
+            auto name_obj = mlua::object_by_path( ls.get_state( ),
+                                                  table, name);
+            if( !name_obj ) {
+                LOGERR << "[S] Invalid table; '" << name << "'"
+                          " field doesn't exists; call: " << call_name
+                          ;
+                return def;
+            } else {
+                LOGDBG << "[S] " << call_name << ": Got value '"
+                       << name_obj->str( )
+                       << "' for the field '" << name << "'";
+                return name_obj->inum( );
+            }
+
+        }
+
+
         int get_table_value( mlua::state &ls, const std::string &call_name,
                              const mlua::objects::base *table,
                              const char *name, std::string& res )
@@ -72,7 +96,7 @@ namespace msctl { namespace agent {
 
         int lcall_add_server( lua_State *L )
         {
-            static auto &log_(gs_application->log( ));
+            //static auto &log_(gs_application->log( ));
 
             mlua::state ls(L);
             auto svc = ls.get_object(  );
@@ -92,7 +116,7 @@ namespace msctl { namespace agent {
                 }
 
                 ls.push( gs_application->subsys<listener>( )
-                                        .add_server( inf ) );
+                                        .add_server( inf, false ) );
                 res = 1;
             } else {
                 ls.push(  );
@@ -102,9 +126,42 @@ namespace msctl { namespace agent {
             return res;
         }
 
+        int lcall_add_logger( lua_State *L )
+        {
+            //static auto &log_(gs_application->log( ));
+            mlua::state ls(L);
+            auto svc = ls.get_object(  );
+            int res = 1;
+            if( svc ) {
+                if( svc->is_container( ) ) {
+                    std::string path;
+                    if( 0 != get_table_value( ls, "logger",
+                                              svc.get( ), "path", path ) )
+                    {
+                        return 2;
+                    }
+                    gs_application->subsys<logging>( ).add_logger_output(path);
+                    ls.push( true );
+                } else if( svc->type_id( ) == objects::base::TYPE_STRING ) {
+                    gs_application->subsys<logging>( )
+                                  .add_logger_output( svc->str( ) );
+                    ls.push( true );
+                } else {
+                    res = 2;
+                }
+            } else {
+                res = 2;
+            }
+            if( res == 2 ) {
+                ls.push(  );
+                ls.push( "Bad value" );
+            }
+            return res;
+        }
+
         int lcall_add_client( lua_State *L )
         {
-            static auto &log_(gs_application->log( ));
+            //static auto &log_(gs_application->log( ));
 
             mlua::state ls(L);
             auto svc = ls.get_object(  );
@@ -123,7 +180,9 @@ namespace msctl { namespace agent {
                     return 2;
                 }
 
-                ls.push(gs_application->subsys<clients>( ).add_client( inf ) );
+                ls.push(gs_application->subsys<clients>( )
+                                        .add_client( inf, false ) );
+
                 res = 1;
             } else {
                 ls.push(  );
@@ -131,6 +190,34 @@ namespace msctl { namespace agent {
                 return 2;
             }
             return res;
+        }
+
+        int lcall_set_polls( lua_State *L )
+        {
+            mlua::state ls(L);
+            auto svc = ls.get_object(  );
+            if( svc && svc->is_container( ) ) {
+
+                auto ios = get_table_value( ls, "polls", svc.get( ), "io", 1 );
+                auto rpc = get_table_value( ls, "polls", svc.get( ), "rpc", 1 );
+
+                if( ios < 1 ) ios = 1;
+                if( rpc < 1 ) rpc = 1;
+
+                if( ios > 20 ) ios = 20;
+                if( rpc > 20 ) rpc = 20;
+
+                gs_application->set_io_pools( ios );
+                gs_application->set_rpc_pools( ios );
+
+                ls.push( true );
+
+            } else {
+                ls.push(  );
+                ls.push( "Bad value" );
+                return 2;
+            }
+            return 1;
         }
 
         void state_init( lua_State *L )
@@ -144,6 +231,8 @@ namespace msctl { namespace agent {
             objects::table tab;
             tab.add( "server", new_function( &lcall_add_server ) );
             tab.add( "client", new_function( &lcall_add_client ) );
+            tab.add( "logger", new_function( &lcall_add_logger ) );
+            tab.add( "polls",  new_function( &lcall_set_polls  ) );
 
             ls.set_object( "msctl", &tab );
 
@@ -203,9 +292,13 @@ namespace msctl { namespace agent {
         return std::make_shared<scripting>( app );
     }
 
-    void scripting::run_config( const std::string &path )
+    void scripting::run_config( )
     {
-        impl_->run_config( path );
+        auto &opts(impl_->app_->cmd_opts( ));
+        if( opts.count( "config" ) ) {
+            auto cfg = opts["config"].as<std::string>( );
+            impl_->run_config( cfg );
+        }
     }
 
 }}

@@ -68,6 +68,9 @@ namespace msctl { namespace agent {
         common::subsys_root                          subsystems_;
         boost::program_options::variables_map        cmd_options_;
 
+        std::uint32_t                                io_pools_  = 1;
+        std::uint32_t                                rpc_pools_ = 1;
+
     public:
 
         application( vtrc::common::pool_pair &pp );
@@ -148,6 +151,12 @@ namespace msctl { namespace agent {
         {
             return logger_;
         }
+
+        std::uint32_t io_pools( ) const { return io_pools_; }
+        void set_io_pools( std::uint32_t val ) { io_pools_ = val; }
+
+        std::uint32_t rpc_pools( ) const { return rpc_pools_; }
+        void set_rpc_pools( std::uint32_t val ) { rpc_pools_ = val; }
 
         void quit( );
 

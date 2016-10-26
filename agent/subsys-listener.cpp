@@ -89,7 +89,7 @@ namespace msctl { namespace agent {
             parent_->get_on_stop_connection( )( c );
         }
 
-        bool add( const listener::server_create_info &serv_info )
+        bool add( const listener::server_create_info &serv_info, bool s )
         {
             using namespace vserv::listeners;
 
@@ -137,6 +137,10 @@ namespace msctl { namespace agent {
                         this->on_stop_connection( c, dev );
                     } );
 
+                if( s ) {
+                    res->start( );
+                }
+
                 std::lock_guard<std::mutex> lck(points_lock_);
                 points_[point] = listener_info( res, dev );
                 return true;
@@ -168,6 +172,7 @@ namespace msctl { namespace agent {
 
     void listener::start( )
     {
+        impl_->start_all( );
         impl_->LOGINF << "Started.";
     }
 
@@ -181,14 +186,9 @@ namespace msctl { namespace agent {
         return std::make_shared<listener>( app );
     }
 
-    bool listener::add_server( const server_create_info &inf )
+    bool listener::add_server( const server_create_info &inf, bool start )
     {
-        return impl_->add( inf );
-    }
-
-    void listener::start_all( )
-    {
-        return impl_->start_all(  );
+        return impl_->add( inf, start );
     }
 
 }}
