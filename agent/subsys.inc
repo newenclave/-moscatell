@@ -2,3 +2,4 @@
 #include "subsys-listener.h"
 #include "subsys-tuntap.h"
 #include "subsys-clients.h"
+#include "subsys-scripting.h"

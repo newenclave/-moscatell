@@ -38,6 +38,7 @@ namespace {
     void add_all( agent::application *app )
     {
         using namespace msctl::agent;
+        app->subsys_add<scripting>( );
         app->subsys_add<logging>( );
         app->subsys_add<listener>( );
         app->subsys_add<clients>( );
@@ -80,7 +81,7 @@ namespace {
         desc.add_options( )
             ("help,?",   "help message")
 
-            ("daemon,D", "run process as daemon")
+            ("application,A", "run process as application")
 
             ("name,n", po::value<std::string>( ),
                     "agent name; whatever you want")
@@ -202,20 +203,17 @@ int main( int argc, const char **argv )
 
         app.subsys<agent::logging>( ).add_logger_output( "-" );
 
-        if( opts.count( "name" ) ) {
-            app.subsys<agent::listener>( ).add_server( "0.0.0.0:443",
-                                             opts["name"].as<std::string>( ));
-            app.subsys<agent::listener>( ).start_all( );
-        }
-
-        if( opts.count( "daemon" ) )  {
-            int res = ::daemon( 1, 0 );
-            if( -1 == res ) {
-                std::cerr << "::daemon call failed: errno = " << errno << "\n";
-            } else if( res != 0 ) {
-                return 0;
-            }
-        }
+//        if( opts.count( "application" ) == 0 )  {
+//            int res = ::daemon( 1, 0 );
+//            if( -1 == res ) {
+//                std::cerr << "::daemon call failed: errno = "
+//                          << errno << "\n";
+//                std::perror( "::daemon" );
+//                return 1;
+//            } else if( res != 0 ) {
+//                return 0;
+//            }
+//        }
 
         auto io_poll = opts["io-pool-size"].as<std::uint32_t>( );
         auto rpc_poll = opts["rpc-pool-size"].as<std::uint32_t>( );
@@ -237,17 +235,17 @@ int main( int argc, const char **argv )
 
         logger( lvl::info, "main" ) << "Init all...";
         app.init( );
+
+        if( opts.count( "config" ) ) {
+            auto cfg = opts["config"].as<std::string>( );
+            app.subsys<agent::scripting>( ).run_config( cfg );
+        }
+
+        app.subsys<agent::clients>( ).start_all( );
+
         logger( lvl::info, "main" ) << "Start all...";
         app.start( );
         logger( lvl::info, "main" ) << "Start OK.";
-
-        if( !opts.count( "name" ) ) {
-            agent::clients::client_create_info ci = {
-                "212.24.104.31:443", "tun10"
-            };
-            app.subsys<agent::clients>( ).add_client( ci );
-            app.subsys<agent::clients>( ).start_all( );
-        }
 
         pp.get_io_pool( ).attach( decorator( "M" ) );
 

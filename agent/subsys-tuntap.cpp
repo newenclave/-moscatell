@@ -230,11 +230,8 @@ namespace msctl { namespace agent {
                        ::msctl::rpc::tuntap::push_res*      /*response*/,
                        ::google::protobuf::Closure* done) override
             {
-//                static auto &log_(*gs_logger);
                 vcomm::closure_holder done_holder( done );
 
-//                LOGINF << "Server got data: "
-//                       << request->value( ).size( ) << " bytes; ";
                 auto dev = reinterpret_cast<server_transport *>
                                                         (client_->user_data( ));
                 if( dev ) {

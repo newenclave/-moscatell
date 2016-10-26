@@ -89,9 +89,12 @@ namespace msctl { namespace agent {
             parent_->get_on_stop_connection( )( c );
         }
 
-        bool add( const std::string &point, const std::string &dev )
+        bool add( const listener::server_create_info &serv_info )
         {
             using namespace vserv::listeners;
+
+            auto &point(serv_info.point);
+            auto &dev(serv_info.device);
 
             auto inf = utilities::get_endpoint_info( point );
             vserv::listener_sptr res;
@@ -178,9 +181,9 @@ namespace msctl { namespace agent {
         return std::make_shared<listener>( app );
     }
 
-    bool listener::add_server(const std::string &point, const std::string &dev)
+    bool listener::add_server( const server_create_info &inf )
     {
-        return impl_->add( point, dev );
+        return impl_->add( inf );
     }
 
     void listener::start_all( )

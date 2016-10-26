@@ -17,6 +17,14 @@ list(APPEND dependencies
 include_directories(${PROJECT_SOURCE_DIR})
 include_directories(${vtrc_common_s_PROJECT_SOURCE_DIR})
 
+####################### LUA ########################
+
+include_directories( ${LUA_INCLUDE_DIR} )
+target_link_libraries( ${exe_name} ${LUA_LIBRARIES} )
+add_dependencies( ${exe_name} lua_lib )
+
+####################################################
+
 message( "-- Seting up dependencies for " ${exe_name} )
 foreach( dep ${dependencies} )
 

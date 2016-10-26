@@ -23,9 +23,14 @@ namespace msctl { namespace agent {
 
     public:
 
+        struct server_create_info {
+            std::string point;
+            std::string device;
+        };
+
         listener( application *app );
         static std::shared_ptr<listener> create( application *app );
-        bool add_server( const std::string &point, const std::string &dev );
+        bool add_server( const server_create_info &inf );
         void start_all( );
 
     private:
