@@ -154,8 +154,10 @@ namespace msctl { namespace agent {
 
             void del_client_impl( vcomm::connection_iface *clnt )
             {
-                auto id = reinterpret_cast<std::uintptr_t>( clnt );
-                points_.erase( id );
+//                for( auto &p: points_ ) {
+//                    if( p.secong )
+//                    points_.erase( id );
+//                }
             }
 
             void del_client( vcomm::connection_iface *clnt  )
@@ -352,7 +354,7 @@ namespace msctl { namespace agent {
                 rpc::tuntap::route_add_req req;
 
                 auto tun_addr = common::get_iface_ipv4( dev );
-                req.add_v4( )->set_address( tun_addr.first.to_ulong( ) );
+                req.add_v4( )->set_address(htonl(tun_addr.first.to_ulong( ) ) );
 
                 cl.call_request( &client_stub::route_add, &req );
 
