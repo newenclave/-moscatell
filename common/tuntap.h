@@ -20,9 +20,15 @@ namespace msctl { namespace common {
     using addres_mask_v6 = std::pair<boost::asio::ip::address_v6,
                                      boost::asio::ip::address_v6>;
 
+    using src_dest_v4 = std::pair<std::uint32_t, std::uint32_t>;
+
     using iface_address_pair = std::pair<addres_mask_v4, addres_mask_v6>;
 
     iface_address_pair get_iface_address( const std::string &dev );
+
+    addres_mask_v4 get_iface_ipv4( const std::string &dev );
+
+    src_dest_v4 extract_ip_v4( const char *data, size_t len );
 
 #ifndef _WIN32
 

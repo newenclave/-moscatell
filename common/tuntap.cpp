@@ -278,7 +278,7 @@ namespace msctl { namespace common {
         return std::make_pair( addr, mask );
     }
 
-    addres_mask_v6 get_v6( const std::string &dev )
+    addres_mask_v6 get_v6( const std::string & /*dev*/ )
     {
         return addres_mask_v6( );
 
@@ -337,8 +337,31 @@ namespace msctl { namespace common {
         return std::make_pair(get_v4(dev), get_v6(dev));
     }
 
-#else
+    addres_mask_v4 get_iface_ipv4( const std::string &dev )
+    {
+        return get_v4( dev );
+    }
 
+    src_dest_v4 extract_ip_v4( const char *data, size_t len )
+    {
+        auto hdr = reinterpret_cast<const iphdr *>(data);
+
+        if( len < sizeof(*hdr) ) {
+            return src_dest_v4( );
+        }
+
+        if( hdr->version != 4 ) {
+            return src_dest_v4( );
+        }
+
+        return std::make_pair( hdr->saddr, hdr->daddr );
+    }
+
+#else
+    addres_mask_v4 get_iface_ipv4( const std::string &dev )
+    {
+        return addres_mask_v4( );
+    }
 #endif
 
 }}

@@ -4,7 +4,21 @@ import "common.proto";
 
 option cc_generic_services = true;
 
-message route_add_req { }
+message addr_v4_pair {
+    optional uint32 address = 1;
+    optional uint32 mask    = 2;
+}
+
+message addr_v6_pair {
+    optional bytes address = 1;
+    optional bytes mask    = 2;
+}
+
+message route_add_req {
+    repeated addr_v4_pair v4 = 1;
+    repeated addr_v6_pair v6 = 2;
+}
+
 message route_add_res { }
 
 message push_req {

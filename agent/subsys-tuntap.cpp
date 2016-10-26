@@ -93,13 +93,15 @@ namespace msctl { namespace agent {
         /// one device -> many clients
         class server_transport: public common::tuntap_transport {
 
-            std::map<std::uintptr_t, server_wrapper_sptr> points_;
+            std::map<std::uint32_t, server_wrapper_sptr> points_;
 
         public:
 
             using route_map = std::map<ba::ip::address, server_wrapper>;
             using parent_type = common::tuntap_transport;
             using empty_callback = std::function<void ()>;
+
+            using route_table = std::map<std::uint32_t, server_wrapper_sptr>;
 
             server_transport( ba::io_service &ios )
                 :parent_type(ios, 2048, parent_type::OPT_DISPATCH_READ)
@@ -109,18 +111,23 @@ namespace msctl { namespace agent {
             {
                 rpc::tuntap::push_req req;
                 req.set_value( data, length );
-                for( auto &p: points_ ) {
-                    try {
-                        p.second->call_request( &server_stub::push, &req );
-                    } catch( ... ) {
-                        ///
+#ifdef _WIN32
+#else
+                auto srcdst = common::extract_ip_v4( data, length );
+                if( srcdst.second ) {
+                    auto f = points_.find( srcdst.second );
+                    if( f != points_.end( ) ) {
+                        f->second->call_request( &server_stub::push, &req );
                     }
                 }
+#endif
+
             }
 
             using shared_type = std::shared_ptr<server_transport>;
 
-            void add_client_impl( vcomm::connection_iface_wptr clnt )
+            void add_client_impl( vcomm::connection_iface_wptr clnt,
+                                  std::uint32_t ip )
             {
                 using vserv::channels::unicast::create_event_channel;
 
@@ -129,19 +136,20 @@ namespace msctl { namespace agent {
                     return;
                 }
 
-                auto id = reinterpret_cast<std::uintptr_t>( clntptr.get( ) );
                 auto svc = std::make_shared<server_wrapper>
                                     (create_event_channel(clntptr), true );
 
-                points_[id] = svc;
+                points_[ip] = svc;
                 svc->channel( )->set_flag( vcomm::rpc_channel::DISABLE_WAIT );
 
             }
 
-            void add_client( vcomm::connection_iface *clnt )
+            void add_client( vcomm::connection_iface *clnt, std::uint32_t ip )
             {
                 auto wclnt = clnt->weak_from_this( );
-                dispatch( [this, wclnt]( ) { add_client_impl( wclnt ); } );
+                dispatch( [this, wclnt, ip]( ) {
+                    add_client_impl( wclnt, ip );
+                } );
             }
 
             void del_client_impl( vcomm::connection_iface *clnt )
@@ -212,7 +220,7 @@ namespace msctl { namespace agent {
             }
 
             void route_add( ::google::protobuf::RpcController*  /*controller*/,
-                        const ::msctl::rpc::tuntap::route_add_req* /*request*/,
+                        const ::msctl::rpc::tuntap::route_add_req* request,
                         ::msctl::rpc::tuntap::route_add_res*      /*response*/,
                         ::google::protobuf::Closure* done) override
             {
@@ -220,7 +228,10 @@ namespace msctl { namespace agent {
                 auto dev = reinterpret_cast<server_transport *>
                                                      (client_->user_data( ));
                 if( dev ) {
-                    dev->add_client( client_ );
+                    if( request->v4_size( ) ) {
+                        auto ip = request->v4( 0 ).address( );
+                        dev->add_client( client_, ip );
+                    }
                 }
                 //auto device = clnt->env( )
             }
@@ -339,6 +350,10 @@ namespace msctl { namespace agent {
                 client_wrapper cl(c->create_channel( ), true);
                 cl.channel( )->set_flag( vcomm::rpc_channel::DISABLE_WAIT );
                 rpc::tuntap::route_add_req req;
+
+                auto tun_addr = common::get_iface_ipv4( dev );
+                req.add_v4( )->set_address( tun_addr.first.to_ulong( ) );
+
                 cl.call_request( &client_stub::route_add, &req );
 
             } else {
