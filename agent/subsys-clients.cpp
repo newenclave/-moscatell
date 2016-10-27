@@ -242,10 +242,10 @@ namespace {
         {
             auto device = client_transport::create( dev, c.get( ) );
 
-            if( device ) {
+            //if( device ) {
 
-                c->assign_rpc_handler( cnt_impl::create( device ) );
-                device->start_read( );
+                //c->assign_rpc_handler( cnt_impl::create( device ) );
+              //  device->start_read( );
 
                 std::lock_guard<std::mutex> lck(clients_lock_);
                 clients_.insert( c );
@@ -261,9 +261,9 @@ namespace {
 
                 cl.call( &client_stub::register_me );
 
-            } else {
-                LOGERR << "Failed to open device: " << errno;
-            }
+//            } else {
+//                LOGERR << "Failed to open device: " << errno;
+//            }
         }
 
         void del_client( vclnt::base_sptr c )
