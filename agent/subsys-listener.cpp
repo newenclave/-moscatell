@@ -215,7 +215,7 @@ namespace {
                 if( c->second->address == poll_.current( ) ) {
                     poll_.drop( );
                 } else {
-                    free_ip_.push( ntohl(c->second->address) );
+                    free_ip_.push( c->second->address );
                 }
                 clients_.erase( c );
             }
