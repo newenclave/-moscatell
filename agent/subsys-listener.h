@@ -24,8 +24,9 @@ namespace msctl { namespace agent {
     public:
 
         struct server_create_info {
-            std::string point;
-            std::string device;
+            std::string                point;
+            std::string                device;
+            utilities::address_v4_poll addr_poll;
         };
 
         listener( application *app );

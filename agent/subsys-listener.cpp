@@ -31,6 +31,8 @@ namespace {
     namespace vcomm = vtrc::common;
     namespace vserv = vtrc::server;
     namespace ba    = boost::asio;
+    namespace gpb   = google::protobuf;
+
     using     utilities::decorators::quote;
 
     struct listener_info {
@@ -63,7 +65,14 @@ namespace {
     /// one device -> many clients
     class server_transport: public common::tuntap_transport {
 
-        std::map<std::uint32_t, server_wrapper_sptr> points_;
+        std::map<std::uint32_t, server_wrapper_sptr> routes_;
+        std::set<std::uint32_t>                      free_ip_;
+        utilities::address_v4_poll                   poll_;
+
+        struct client_info {
+            vcomm::connection_iface *connection = nullptr;
+            std::uint32_t            address;
+        };
 
     public:
 
@@ -73,8 +82,10 @@ namespace {
 
         using route_table = std::map<std::uint32_t, server_wrapper_sptr>;
 
-        server_transport( ba::io_service &ios )
+        server_transport( ba::io_service &ios,
+                          const utilities::address_v4_poll &poll )
             :parent_type(ios, 2048, parent_type::OPT_DISPATCH_READ)
+            ,poll_(poll)
         { }
 
         void on_read( const char *data, size_t length ) override
@@ -85,8 +96,8 @@ namespace {
 #else
             auto srcdst = common::extract_ip_v4( data, length );
             if( srcdst.second ) {
-                auto f = points_.find( srcdst.second );
-                if( f != points_.end( ) ) {
+                auto f = routes_.find( srcdst.second );
+                if( f != routes_.end( ) ) {
                     f->second->call_request( &server_stub::push, &req );
                 }
             }
@@ -97,28 +108,34 @@ namespace {
         using shared_type = std::shared_ptr<server_transport>;
 
         void add_client_impl( vcomm::connection_iface_wptr clnt,
-                              std::uint32_t ip )
+                              const ::msctl::rpc::tuntap::register_req* req,
+                              ::msctl::rpc::tuntap::register_res*       res,
+                              gpb::Closure *done )
         {
             using vserv::channels::unicast::create_event_channel;
+            vcomm::closure_holder done_holder( done );
 
             auto clntptr = clnt.lock( );
             if( !clntptr ) {
                 return;
             }
 
-            auto svc = std::make_shared<server_wrapper>
-                                (create_event_channel(clntptr), true );
+//            auto svc = std::make_shared<server_wrapper>
+//                                (create_event_channel(clntptr), true );
 
-            points_[ip] = svc;
-            svc->channel( )->set_flag( vcomm::rpc_channel::DISABLE_WAIT );
+//            routes_[ip] = svc;
+//            svc->channel( )->set_flag( vcomm::rpc_channel::DISABLE_WAIT );
 
         }
 
-        void add_client( vcomm::connection_iface *clnt, std::uint32_t ip )
+        void add_client( vcomm::connection_iface *clnt,
+                         const ::msctl::rpc::tuntap::register_req* req,
+                         ::msctl::rpc::tuntap::register_res*       res,
+                         gpb::Closure *done )
         {
             auto wclnt = clnt->weak_from_this( );
-            dispatch( [this, wclnt, ip]( ) {
-                add_client_impl( wclnt, ip );
+            dispatch( [this, wclnt, req, res, done]( ) {
+                add_client_impl( wclnt, req, res, done );
             } );
         }
 
@@ -138,10 +155,11 @@ namespace {
         }
 
         static
-        shared_type create( application *app, const std::string &device )
+        shared_type create( application *app,
+                            const listener::server_create_info &inf )
         {
             using std::make_shared;
-            auto dev  = common::open_tun( device, false );
+            auto dev  = common::open_tun( inf.device, false );
             if( dev < 0 ) {
                 return shared_type( );
             }
@@ -150,7 +168,7 @@ namespace {
 //                }
 
             auto inst = make_shared<server_transport>
-                                            ( app->get_io_service( ) );
+                                ( app->get_io_service( ), inf.addr_poll );
             inst->get_stream( ).assign( dev );
             return inst;
         }
@@ -203,8 +221,7 @@ namespace {
                           ::msctl::rpc::tuntap::register_res* response,
                           ::google::protobuf::Closure* done) override
         {
-            vcomm::closure_holder done_holder( done );
-
+            device_->transport->add_client( client_, request, response, done );
         }
 
         void push( ::google::protobuf::RpcController*   /*controller*/,
@@ -214,20 +231,14 @@ namespace {
         {
             vcomm::closure_holder done_holder( done );
 
-            auto dev = reinterpret_cast<server_transport *>
-                                                    (client_->user_data( ));
-            if( dev ) {
-                dev->write_post_notify( request->value( ),
-                    [ ](const boost::system::error_code &err)
-                    {
-                        if( err ) {
-                            //std::cout << "" << err.message( ) << "\n";
-                        }
-                    } );
-            } else {
-//                    auto hex = utilities::bin2hex( request->value( ) );
-//                    LOGDBG << hex;
-            }
+            device_->transport
+                   ->write_post_notify( request->value( ),
+                     [ ](const boost::system::error_code &err)
+                     {
+                         if( err ) {
+                             //std::cout << "" << err.message( ) << "\n";
+                         }
+                     } );
         }
     };
 
@@ -277,11 +288,14 @@ namespace {
 
                 info = std::make_shared<device_info>( );
                 info->name      = dev.device;
-                info->transport = server_transport::create( app_, dev.device );
+                info->transport = server_transport::create( app_, dev );
                 if( info->transport ) {
+
                     info->transport->start_read( );
+
                     vtrc::upgrade_to_unique ulck(lck);
                     devices_[dev.device] = remote_[id] = info;
+
                 } else {
                     LOGERR << "Failed to open device: " << errno;
                 }

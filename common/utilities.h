@@ -28,6 +28,12 @@ namespace utilities {
 
     public:
 
+        address_v4_poll             (                          ) = default;
+        address_v4_poll             ( const address_v4_poll &  ) = default;
+        address_v4_poll             (       address_v4_poll && ) = default;
+        address_v4_poll &operator = ( const address_v4_poll &  ) = default;
+        address_v4_poll &operator = (       address_v4_poll && ) = default;
+
         address_v4_poll( std::uint32_t first, std::uint32_t last,
                          std::uint32_t mask )
             :first_(first)
