@@ -178,19 +178,16 @@ namespace {
 
             next_client_info->client = chan;
 
-            routes_[next_addr]
+            routes_[htonl(next_addr)]
                     = clients_[reinterpret_cast<std::uintptr_t>(c_ptr)]
                     = next_client_info;
 
-            next_addr = htonl(next_addr);
-            const char *s_addr = inet_ntoa( *(in_addr *)(&next_addr) );
-
+            auto s_addr = ba::ip::address_v4( next_addr );
+            auto s_mask = ba::ip::address_v4( next_mask);
             logger_impl &log_(*gs_logger);
-            LOGINF << "Set client address: " << s_addr;
 
-            const char *s_mask = inet_ntoa( *(in_addr *)(&next_mask) );
-
-            LOGINF << "Set client address: " << s_mask;
+            LOGINF << "Set client address: " << s_addr.to_string( )
+                   << " with mask " << s_mask.to_string( );
 
             res->mutable_iface_addr( )->set_v4_address( next_addr );
             res->mutable_iface_addr( )->set_v4_mask( next_mask );
@@ -214,11 +211,11 @@ namespace {
             auto id = reinterpret_cast<std::uintptr_t>(clnt);
             auto c = clients_.find( id );
             if( c != clients_.end( ) ) {
-                routes_.erase(c->second->address);
+                routes_.erase(htonl(c->second->address));
                 if( c->second->address == poll_.current( ) ) {
                     poll_.drop( );
                 } else {
-                    free_ip_.push( c->second->address );
+                    free_ip_.push( ntohs(c->second->address) );
                 }
                 clients_.erase( c );
             }

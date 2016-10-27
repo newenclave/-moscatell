@@ -143,8 +143,6 @@ namespace {
 
         void on_read( const char *data, size_t length ) override
         {
-//                auto &log_ = *gs_logger;
-//                LOGINF << "Got data: " << length << " bytes";
             rpc::tuntap::push_req req;
             req.set_value( data, length );
             client_.call_request( &client_stub::push, &req );
@@ -160,9 +158,6 @@ namespace {
             if( dev < 0 ) {
                 return shared_type( );
             }
-//                if( common::device_up( device ) < 0) {
-//                    return shared_type( );
-//                }
 
             auto inst = make_shared<client_transport>( c );
             inst->get_stream( ).assign( dev );
