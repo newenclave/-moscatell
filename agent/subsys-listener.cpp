@@ -67,8 +67,8 @@ namespace {
     /// one device -> many clients
     class server_transport: public common::tuntap_transport {
 
-        std::queue<std::uint32_t>                    free_ip_;
-        utilities::address_v4_poll                   poll_;
+        std::queue<std::uint32_t>    free_ip_;
+        utilities::address_v4_poll   poll_;
 
         struct client_info {
             vcomm::connection_iface *connection = nullptr;
@@ -92,7 +92,15 @@ namespace {
                           const utilities::address_v4_poll &poll )
             :parent_type(ios, 2048, parent_type::OPT_DISPATCH_READ)
             ,poll_(poll)
-        { }
+        {
+            //// TODO fix!
+            in_addr addr;
+            inet_aton( "192.168.0.0", &addr );
+            in_addr mask;
+            inet_aton( "255.255.255.0", &mask );
+            poll_ = utilities::address_v4_poll( ntohl(addr.s_addr),
+                                                ntohl(mask.s_addr) );
+        }
 
         void on_read( const char *data, size_t length ) override
         {
@@ -204,6 +212,11 @@ namespace {
             auto c = clients_.find( id );
             if( c != clients_.end( ) ) {
                 routes_.erase(c->second->address);
+                if( c->second->address == poll_.current( ) ) {
+                    poll_.drop( );
+                } else {
+                    free_ip_.push( c->second->address );
+                }
                 clients_.erase( c );
             }
         }
