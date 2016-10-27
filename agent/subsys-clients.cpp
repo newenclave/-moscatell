@@ -254,11 +254,12 @@ namespace {
                 client_wrapper cl(c->create_channel( ), true);
                 cl.channel( )->set_flag( vcomm::rpc_channel::DISABLE_WAIT );
 
+
 //                rpc::tuntap::route_add_req req;
 //                auto tun_addr = common::get_iface_ipv4( dev );
 //                req.add_v4( )->set_address(htonl(tun_addr.first.to_ulong( ) ) );
 
-//                cl.call_request( &client_stub::route_add, &req );
+                cl.call( &client_stub::register_me );
 
             } else {
                 LOGERR << "Failed to open device: " << errno;

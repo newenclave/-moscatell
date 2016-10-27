@@ -184,10 +184,13 @@ namespace {
 
             next_addr = htonl(next_addr);
             const char *s_addr = inet_ntoa( *(in_addr *)(&next_addr) );
-            const char *s_mask = inet_ntoa( *(in_addr *)(&next_mask) );
 
             logger_impl &log_(*gs_logger);
-            LOGINF << "Set client address: " << s_addr << " mask: " << s_mask;
+            LOGINF << "Set client address: " << s_addr;
+
+            const char *s_mask = inet_ntoa( *(in_addr *)(&next_mask) );
+
+            LOGINF << "Set client address: " << s_mask;
 
             res->mutable_iface_addr( )->set_v4_address( next_addr );
             res->mutable_iface_addr( )->set_v4_mask( next_mask );
