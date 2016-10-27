@@ -1,4 +1,5 @@
 #include <mutex>
+#include <system_error>
 
 #include "subsys-clients.h"
 
@@ -30,6 +31,8 @@ namespace {
     namespace vclnt = vtrc::client;
     namespace verrs = vtrc::rpc::errors;
     namespace ba    = boost::asio;
+
+    using utilities::decorators::quote;
 
     logger_impl *gs_logger = nullptr;
 
@@ -242,28 +245,63 @@ namespace {
         {
             auto device = client_transport::create( dev, c.get( ) );
 
-            //if( device ) {
+            if( device ) {
 
-                //c->assign_rpc_handler( cnt_impl::create( device ) );
-              //  device->start_read( );
+                c->assign_rpc_handler( cnt_impl::create( device ) );
+
+                client_wrapper cl(c->create_channel( ), true);
+
+                try {
+                    rpc::tuntap::register_req req;
+                    rpc::tuntap::register_res res;
+                    cl.call( &client_stub::register_me, &req, &res );
+
+                    auto naddr = ntohl(res.iface_addr( ).v4_address( ));
+                    auto nmask = ntohl(res.iface_addr( ).v4_mask( ));
+
+                    ba::ip::address_v4 addr(naddr);
+                    ba::ip::address_v4 mask(nmask);
+
+                    LOGINF << "Got address: " << quote(addr.to_string( ))
+                           << " and mask: " << quote(mask.to_string( ));
+
+                    if( common::set_dev_ip4( dev, addr.to_string( ) ) < 0 ) {
+                        std::error_code ec(errno, std::system_category( ));
+                        LOGERR << "Failed to assign ip: " << ec.value( )
+                               << " (" << ec.message( ) << ")";
+                        c->disconnect( );
+                        device->close( );
+                        return;
+                    }
+
+                    if( common::set_dev_ip4_mask( dev, mask.to_string( ) ) < 0){
+                        std::error_code ec(errno, std::system_category( ));
+                        LOGERR << "Failed to assign mask: " << ec.value( )
+                               << " (" << ec.message( ) << ")";
+                        device->close( );
+                        c->disconnect( );
+                        return;
+                    }
+
+                } catch( const std::exception &ex ) {
+                    LOGERR << "Client failed to register: " << ex.what( );
+                    device->close( );
+                    c->disconnect( );
+                    return;
+                }
+
+                cl.channel( )->set_flag( vcomm::rpc_channel::DISABLE_WAIT );
+                device->start_read( );
 
                 std::lock_guard<std::mutex> lck(clients_lock_);
                 clients_.insert( c );
                 clients_lock_.unlock( );
 
-                client_wrapper cl(c->create_channel( ), true);
-                cl.channel( )->set_flag( vcomm::rpc_channel::DISABLE_WAIT );
-
-
-//                rpc::tuntap::route_add_req req;
-//                auto tun_addr = common::get_iface_ipv4( dev );
-//                req.add_v4( )->set_address(htonl(tun_addr.first.to_ulong( ) ) );
-
-                cl.call( &client_stub::register_me );
-
-//            } else {
-//                LOGERR << "Failed to open device: " << errno;
-//            }
+            } else {
+                std::error_code ec(errno, std::system_category( ));
+                LOGERR << "Failed to open device: " << ec.value( )
+                       << " (" << ec.message( ) << ")";
+            }
         }
 
         void del_client( vclnt::base_sptr c )
@@ -316,8 +354,9 @@ namespace {
                 LOGINF << "Client is ready for device "
                        << quote(c->device)
                           ;
-
-                add_client( c->client, dev );
+                app_->get_rpc_service( ).post( [this, c, dev]( ) {
+                    add_client( c->client, dev );
+                } );
                 parent_->get_on_client_ready( )( c->client, dev );
             }
         }

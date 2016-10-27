@@ -170,7 +170,7 @@ namespace {
                            << "0x" << c_ptr << " "
                            << quote(mess)
                            << ". Removing...";
-                    this->del_client( c_ptr );
+                    this->del_client_impl( c_ptr );
                 }
             };
 
