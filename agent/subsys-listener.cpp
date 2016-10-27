@@ -183,7 +183,7 @@ namespace {
                     = next_client_info;
 
             auto s_addr = ba::ip::address_v4( next_addr );
-            auto s_mask = ba::ip::address_v4( next_mask);
+            auto s_mask = ba::ip::address_v4( htonl(next_mask) );
             logger_impl &log_(*gs_logger);
 
             LOGINF << "Set client address: " << s_addr.to_string( )
@@ -215,7 +215,7 @@ namespace {
                 if( c->second->address == poll_.current( ) ) {
                     poll_.drop( );
                 } else {
-                    free_ip_.push( ntohs(c->second->address) );
+                    free_ip_.push( ntohl(c->second->address) );
                 }
                 clients_.erase( c );
             }
