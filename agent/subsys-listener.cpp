@@ -189,7 +189,7 @@ namespace {
             LOGINF << "Set client address: " << s_addr.to_string( )
                    << " with mask " << s_mask.to_string( );
 
-            res->mutable_iface_addr( )->set_v4_address( next_addr );
+            res->mutable_iface_addr( )->set_v4_address( htonl(next_addr) );
             res->mutable_iface_addr( )->set_v4_mask( next_mask );
 
         }
