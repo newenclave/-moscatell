@@ -19,8 +19,7 @@ namespace utilities {
         }
     };
 
-
-    class address_poll {
+    class address_v4_poll {
 
         std::uint32_t first_   = 0;
         std::uint32_t last_    = 0;
@@ -29,15 +28,15 @@ namespace utilities {
 
     public:
 
-        address_poll( std::uint32_t first, std::uint32_t last,
-                      std::uint32_t mask )
+        address_v4_poll( std::uint32_t first, std::uint32_t last,
+                         std::uint32_t mask )
             :first_(first)
             ,last_(last)
             ,current_(first)
             ,mask_(mask)
         { }
 
-        address_poll( std::uint32_t net, std::uint32_t mask )
+        address_v4_poll( std::uint32_t net, std::uint32_t mask )
             :first_(net + 1)
             ,last_((~mask | net) - 1)
             ,current_(net + 1)
@@ -59,9 +58,21 @@ namespace utilities {
             return current_ != (last_ + 1) ? current_++ : 0;
         }
 
+        void drop( )
+        {
+            if( current_ != first_ ) {
+                --current_;
+            }
+        }
+
         bool end( ) const
         {
             return current_ == (last_ + 1);
+        }
+
+        bool begin( ) const
+        {
+            return current_ == first_;
         }
 
     };

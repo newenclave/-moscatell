@@ -259,11 +259,11 @@ namespace {
         { }
 
         void add_server_point( vcomm::connection_iface *c,
-                               const std::string &dev )
+                               const listener::server_create_info &dev )
         {
             auto id = reinterpret_cast<std::uintptr_t>(c);
             vtrc::upgradable_lock lck(remote_lock_);
-            auto f  =  devices_.find( dev );
+            auto f  =  devices_.find( dev.device );
             device_info_sptr info;
             if( f != devices_.end( ) ) {
                 /// ok there is one device
@@ -276,12 +276,12 @@ namespace {
                 /// ok there is no device
 
                 info = std::make_shared<device_info>( );
-                info->name      = dev;
-                info->transport = server_transport::create( app_, dev );
+                info->name      = dev.device;
+                info->transport = server_transport::create( app_, dev.device );
                 if( info->transport ) {
                     info->transport->start_read( );
                     vtrc::upgrade_to_unique ulck(lck);
-                    devices_[dev] = remote_[id] = info;
+                    devices_[dev.device] = remote_[id] = info;
                 } else {
                     LOGERR << "Failed to open device: " << errno;
                 }
@@ -300,39 +300,39 @@ namespace {
             }
         }
 
-        void on_start( const std::string &p )
+        void on_start( const listener::server_create_info &p )
         {
-            LOGINF << "Point " << quote(p) << " was started.";
+            LOGINF << "Point " << quote(p.point) << " was started.";
                       ;
         }
 
-        void on_stop( const std::string &p )
+        void on_stop( const listener::server_create_info &p )
         {
-            LOGINF << "Point " << quote(p) << " was stopped.";
+            LOGINF << "Point " << quote(p.point) << " was stopped.";
                       ;
         }
 
         void on_accept_failed( const VTRC_SYSTEM::error_code &err,
-                               const std::string &p, const std::string &d )
+                               const listener::server_create_info &inf )
         {
-            LOGERR << "Accept failed on listener: " << quote(p)
-                   << "' assigned to device " << quote(d) << "; "
+            LOGERR << "Accept failed on listener: " << quote(inf.point)
+                   << "' assigned to device " << quote(inf.device) << "; "
                    << "Error: " << err.value( )
                    << " (" << err.message( ) << ")"
                       ;
         }
 
         void on_new_connection( vcomm::connection_iface *c,
-                                const std::string &dev )
+                                const listener::server_create_info &dev )
         {
             LOGINF << "Add connection: " << quote(c->name( ))
-                   << " for device " << quote(dev);
+                   << " for device " << quote(dev.device);
             add_server_point( c, dev );
-            parent_->get_on_new_connection( )( c, dev );
+            parent_->get_on_new_connection( )( c, dev.device );
         }
 
         void on_stop_connection( vcomm::connection_iface *c,
-                                 const std::string & /*dev*/ )
+                                 const listener::server_create_info & /*dev*/ )
         {
             LOGINF << "Remove connection: " << quote(c->name( ));
             del_server_point( c );
@@ -360,31 +360,32 @@ namespace {
 
             if( res ) {
 
-                LOGINF << "Adding '" << point << "' for device " << dev;
+                LOGINF << "Adding "      << quote(point)
+                       << " for device " << quote(dev);
 
                 res->on_start_connect(
-                    [this, point](  ) {
-                        this->on_start( point );
+                    [this, serv_info](  ) {
+                        this->on_start( serv_info );
                     } );
 
                 res->on_stop_connect (
-                    [this, point](  ) {
-                        this->on_stop( point );
+                    [this, serv_info](  ) {
+                        this->on_stop( serv_info );
                     } );
 
                 res->on_accept_failed_connect(
-                    [this, point, dev]( const VTRC_SYSTEM::error_code &err ) {
-                        this->on_accept_failed( err, point, dev );
+                    [this, serv_info]( const VTRC_SYSTEM::error_code &err ) {
+                        this->on_accept_failed( err, serv_info );
                     } );
 
                 res->on_new_connection_connect(
-                    [this, dev]( vcomm::connection_iface *c ) {
-                        this->on_new_connection( c, dev );
+                    [this, serv_info]( vcomm::connection_iface *c ) {
+                        this->on_new_connection( c, serv_info );
                     } );
 
                 res->on_stop_connection_connect(
-                    [this, dev]( vcomm::connection_iface *c ) {
-                        this->on_stop_connection( c, dev );
+                    [this, serv_info]( vcomm::connection_iface *c ) {
+                        this->on_stop_connection( c, serv_info );
                     } );
 
                 if( s ) {
