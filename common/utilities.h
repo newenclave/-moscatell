@@ -19,6 +19,108 @@ namespace utilities {
         }
     };
 
+
+    class address_poll {
+
+        std::uint32_t first_   = 0;
+        std::uint32_t last_    = 0;
+        std::uint32_t current_ = 0;
+        std::uint32_t mask_    = 0;
+
+    public:
+
+        address_poll( std::uint32_t first, std::uint32_t last,
+                      std::uint32_t mask )
+            :first_(first)
+            ,last_(last)
+            ,current_(first)
+            ,mask_(mask)
+        { }
+
+        address_poll( std::uint32_t net, std::uint32_t mask )
+            :first_(net + 1)
+            ,last_((~mask | net) - 1)
+            ,current_(net + 1)
+            ,mask_(mask)
+        { }
+
+        std::uint32_t current( ) const
+        {
+            return current_;
+        }
+
+        std::uint32_t last( ) const
+        {
+            return last_;
+        }
+
+        std::uint32_t next( )
+        {
+            return current_ != (last_ + 1) ? current_++ : 0;
+        }
+
+        bool end( ) const
+        {
+            return current_ == (last_ + 1);
+        }
+
+    };
+
+    namespace decorators {
+
+        template <typename T, typename Pre, typename Post>
+        class output {
+            T       value_;
+            Pre     pre_;
+            Post    pos_;
+        public:
+            output( T &&value, Pre &&pre, Post &&pos )
+                :value_(value)
+                ,pre_(pre)
+                ,pos_(pos)
+
+            { }
+
+            std::ostream &print( std::ostream &o ) const
+            {
+                o << pre_ << value_ << pos_;
+                return o;
+            }
+        };
+
+        template <typename T, typename Pre, typename Post>
+        inline
+        std::ostream & operator << ( std::ostream &o,
+                                     const output<T, Pre, Post> &d )
+        {
+            return d.print( o );
+        }
+
+        template <typename T, typename Pre, typename Post>
+        inline
+        output<T, Pre, Post> create( T &&value, Pre &&pre, Post &&pos )
+        {
+            return std::move( output<T, Pre, Post>(value, pre, pos) );
+        }
+
+        inline
+        output<const char *, char, char> quote( const char *value,
+                                                char sym = '\'' )
+        {
+            using res_type = output<const char *, char, char>;
+            return std::move( res_type( std::move(value),
+                                        std::move(sym),
+                                        std::move(sym) ) );
+        }
+
+        inline
+        output<const char *, char, char> quote( const std::string &value,
+                                                char sym = '\'' )
+        {
+            return quote( value.c_str( ), sym );
+        }
+    }
+
     using h2b_result = result<std::string, const char *>;
 
     h2b_result bin2hex( void const *bytes, size_t length );

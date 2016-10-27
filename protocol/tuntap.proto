@@ -4,22 +4,23 @@ import "common.proto";
 
 option cc_generic_services = true;
 
-message addr_v4_pair {
-    optional uint32 address = 1;
-    optional uint32 mask    = 2;
+message address_pair {
+    enum address_family {
+        FAMILY_INET  = 4;
+        //FAMILY_INET6 = 6;
+    };
+    optional address_family family  = 1;
+    optional bytes address          = 2;
+    optional bytes mask             = 3;
 }
 
-message addr_v6_pair {
-    optional bytes address = 1;
-    optional bytes mask    = 2;
+message register_req {
+    optional string name = 1;
 }
 
-message route_add_req {
-    repeated addr_v4_pair v4 = 1;
-    repeated addr_v6_pair v6 = 2;
+message register_res {
+    optional address_pair iface_addr = 1;
 }
-
-message route_add_res { }
 
 message push_req {
     optional bytes value = 1;
@@ -28,7 +29,7 @@ message push_req {
 message push_res { }
 
 service server_instance {
-    rpc route_add( route_add_req ) returns ( route_add_res );
+    rpc register_me( register_req ) returns ( register_res );
     rpc push( push_req ) returns ( push_res );
 }
 

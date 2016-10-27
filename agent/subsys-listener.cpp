@@ -8,6 +8,17 @@
 
 #include "vtrc-system.h"
 
+#include "protocol/tuntap.pb.h"
+
+#include "vtrc-common/vtrc-closure-holder.h"
+#include "vtrc-common/vtrc-rpc-service-wrapper.h"
+#include "vtrc-common/vtrc-stub-wrapper.h"
+#include "vtrc-common/vtrc-mutex-typedefs.h"
+#include "vtrc-server/vtrc-channels.h"
+
+#include "common/tuntap.h"
+#include "common/utilities.h"
+
 #define LOG(lev) log_(lev, "listener")
 #define LOGINF   LOG(logger_impl::level::info)
 #define LOGDBG   LOG(logger_impl::level::debug)
@@ -15,8 +26,12 @@
 #define LOGWRN   LOG(logger_impl::level::warning)
 namespace msctl { namespace agent {
 
+namespace {
+
     namespace vcomm = vtrc::common;
     namespace vserv = vtrc::server;
+    namespace ba    = boost::asio;
+    using     utilities::decorators::quote;
 
     struct listener_info {
         vserv::listener_sptr point;
@@ -37,8 +52,195 @@ namespace msctl { namespace agent {
         }
     };
 
-    using listeners_map = std::map<std::string, listener_info>;
+    using listeners_map  = std::map<std::string, listener_info>;
+    using server_stub    = rpc::tuntap::client_instance_Stub;
+    using server_wrapper = vcomm::stub_wrapper<server_stub,
+                                               vcomm::rpc_channel>;
+    using server_wrapper_sptr = std::shared_ptr<server_wrapper>;
 
+
+    /// works with routes
+    /// one device -> many clients
+    class server_transport: public common::tuntap_transport {
+
+        std::map<std::uint32_t, server_wrapper_sptr> points_;
+
+    public:
+
+        using route_map = std::map<ba::ip::address, server_wrapper>;
+        using parent_type = common::tuntap_transport;
+        using empty_callback = std::function<void ()>;
+
+        using route_table = std::map<std::uint32_t, server_wrapper_sptr>;
+
+        server_transport( ba::io_service &ios )
+            :parent_type(ios, 2048, parent_type::OPT_DISPATCH_READ)
+        { }
+
+        void on_read( const char *data, size_t length ) override
+        {
+            rpc::tuntap::push_req req;
+            req.set_value( data, length );
+#ifdef _WIN32
+#else
+            auto srcdst = common::extract_ip_v4( data, length );
+            if( srcdst.second ) {
+                auto f = points_.find( srcdst.second );
+                if( f != points_.end( ) ) {
+                    f->second->call_request( &server_stub::push, &req );
+                }
+            }
+#endif
+
+        }
+
+        using shared_type = std::shared_ptr<server_transport>;
+
+        void add_client_impl( vcomm::connection_iface_wptr clnt,
+                              std::uint32_t ip )
+        {
+            using vserv::channels::unicast::create_event_channel;
+
+            auto clntptr = clnt.lock( );
+            if( !clntptr ) {
+                return;
+            }
+
+            auto svc = std::make_shared<server_wrapper>
+                                (create_event_channel(clntptr), true );
+
+            points_[ip] = svc;
+            svc->channel( )->set_flag( vcomm::rpc_channel::DISABLE_WAIT );
+
+        }
+
+        void add_client( vcomm::connection_iface *clnt, std::uint32_t ip )
+        {
+            auto wclnt = clnt->weak_from_this( );
+            dispatch( [this, wclnt, ip]( ) {
+                add_client_impl( wclnt, ip );
+            } );
+        }
+
+        void del_client_impl( vcomm::connection_iface *clnt )
+        {
+//                for( auto &p: points_ ) {
+//                    if( p.secong )
+//                    points_.erase( id );
+//                }
+        }
+
+        void del_client( vcomm::connection_iface *clnt  )
+        {
+            dispatch( [this, clnt ]( ) {
+                del_client_impl( clnt );
+            } );
+        }
+
+        static
+        shared_type create( application *app, const std::string &device )
+        {
+            using std::make_shared;
+            auto dev  = common::open_tun( device, false );
+            if( dev < 0 ) {
+                return shared_type( );
+            }
+//                if( common::device_up( device ) < 0) {
+//                    return shared_type( );
+//                }
+
+            auto inst = make_shared<server_transport>
+                                            ( app->get_io_service( ) );
+            inst->get_stream( ).assign( dev );
+            return inst;
+        }
+
+    };
+
+    struct device_info {
+        std::string                   name;
+        server_transport::shared_type transport;
+    };
+
+    using device_info_sptr = std::shared_ptr<device_info>;
+
+    using remote_map = std::map<std::uintptr_t, device_info_sptr>;
+    using device_map = std::map<std::string,    device_info_sptr>;
+
+    class svc_impl: public rpc::tuntap::server_instance {
+
+        application                  *app_;
+        vcomm::connection_iface      *client_;
+        device_info_sptr              device_;
+
+    public:
+
+        using parent_type = rpc::tuntap::server_instance;
+
+        svc_impl( application *app,
+                  vcomm::connection_iface_wptr client,
+                  device_info_sptr device )
+            :app_(app)
+            ,client_(client.lock( ).get( ))
+            ,device_(device)
+        {
+//            auto &log_(app->log( ));
+//            LOGINF << "Create service for " << client.lock( )->name( );
+        }
+
+        ~svc_impl( )
+        {
+            //device_->transport->del_client( client_ );
+        }
+
+        static std::string name( )
+        {
+            return parent_type::descriptor( )->full_name( );
+        }
+
+        void register_me( ::google::protobuf::RpcController* /*controller*/,
+                          const ::msctl::rpc::tuntap::register_req* request,
+                          ::msctl::rpc::tuntap::register_res* response,
+                          ::google::protobuf::Closure* done) override
+        {
+            vcomm::closure_holder done_holder( done );
+
+        }
+
+        void push( ::google::protobuf::RpcController*   /*controller*/,
+                   const ::msctl::rpc::tuntap::push_req* request,
+                   ::msctl::rpc::tuntap::push_res*      /*response*/,
+                   ::google::protobuf::Closure* done) override
+        {
+            vcomm::closure_holder done_holder( done );
+
+            auto dev = reinterpret_cast<server_transport *>
+                                                    (client_->user_data( ));
+            if( dev ) {
+                dev->write_post_notify( request->value( ),
+                    [ ](const boost::system::error_code &err)
+                    {
+                        if( err ) {
+                            //std::cout << "" << err.message( ) << "\n";
+                        }
+                    } );
+            } else {
+//                    auto hex = utilities::bin2hex( request->value( ) );
+//                    LOGDBG << hex;
+            }
+        }
+    };
+
+    application::service_wrapper_sptr create_service(
+                                  application *app,
+                                  vcomm::connection_iface_wptr cl,
+                                  device_info_sptr dev )
+    {
+        auto inst = std::make_shared<svc_impl>( app, cl, dev );
+        return app->wrap_service( cl, inst );
+    }
+
+}
     struct listener::impl {
 
         application     *app_;
@@ -48,27 +250,73 @@ namespace msctl { namespace agent {
         listeners_map    points_;
         std::mutex       points_lock_;
 
+        remote_map          remote_;
+        device_map          devices_;
+        vtrc::shared_mutex  remote_lock_;
+
         impl( logger_impl &log )
             :log_(log)
         { }
 
+        void add_server_point( vcomm::connection_iface *c,
+                               const std::string &dev )
+        {
+            auto id = reinterpret_cast<std::uintptr_t>(c);
+            vtrc::upgradable_lock lck(remote_lock_);
+            auto f  =  devices_.find( dev );
+            device_info_sptr info;
+            if( f != devices_.end( ) ) {
+                /// ok there is one device
+
+                info = f->second;
+                vtrc::upgrade_to_unique ulck(lck);
+                remote_[id] = info;
+
+            } else {
+                /// ok there is no device
+
+                info = std::make_shared<device_info>( );
+                info->name      = dev;
+                info->transport = server_transport::create( app_, dev );
+                if( info->transport ) {
+                    info->transport->start_read( );
+                    vtrc::upgrade_to_unique ulck(lck);
+                    devices_[dev] = remote_[id] = info;
+                } else {
+                    LOGERR << "Failed to open device: " << errno;
+                }
+            }
+        }
+
+        void del_server_point( vcomm::connection_iface *c )
+        {
+            auto id = reinterpret_cast<std::uintptr_t>(c);
+            vtrc::upgradable_lock lck(remote_lock_);
+            auto f = remote_.find( id);
+            if( f != remote_.end( ) ) {
+                f->second->transport->del_client( c ); /// remove from transport
+                vtrc::upgrade_to_unique ulck(lck);
+                remote_.erase( f );                    /// remove from endpoints
+            }
+        }
+
         void on_start( const std::string &p )
         {
-            LOGINF << "Point '" << p << "' was started.";
+            LOGINF << "Point " << quote(p) << " was started.";
                       ;
         }
 
         void on_stop( const std::string &p )
         {
-            LOGINF << "Point '" << p << "' was stopped.";
+            LOGINF << "Point " << quote(p) << " was stopped.";
                       ;
         }
 
         void on_accept_failed( const VTRC_SYSTEM::error_code &err,
                                const std::string &p, const std::string &d )
         {
-            LOGERR << "Accept failed on listener: '" << p
-                   << "' assigned to device '" << d << "'; "
+            LOGERR << "Accept failed on listener: " << quote(p)
+                   << "' assigned to device " << quote(d) << "; "
                    << "Error: " << err.value( )
                    << " (" << err.message( ) << ")"
                       ;
@@ -77,15 +325,17 @@ namespace msctl { namespace agent {
         void on_new_connection( vcomm::connection_iface *c,
                                 const std::string &dev )
         {
-            LOGINF << "Add connection: '" << c->name( ) << "'"
-                   << " for device '" << dev << "'";
+            LOGINF << "Add connection: " << quote(c->name( ))
+                   << " for device " << quote(dev);
+            add_server_point( c, dev );
             parent_->get_on_new_connection( )( c, dev );
         }
 
         void on_stop_connection( vcomm::connection_iface *c,
                                  const std::string & /*dev*/ )
         {
-            LOGINF << "Remove connection: '" << c->name( ) << "'";
+            LOGINF << "Remove connection: " << quote(c->name( ));
+            del_server_point( c );
             parent_->get_on_stop_connection( )( c );
         }
 
@@ -153,11 +403,35 @@ namespace msctl { namespace agent {
         {
             std::lock_guard<std::mutex> lck(points_lock_);
             for( auto &p: points_ ) {
-                LOGINF << "Starting '" << p.first << "'...";
+                LOGINF << "Starting " << quote(p.first) << "...";
                 p.second.point->start( );
                 LOGINF << "Ok.";
             }
         }
+
+        void reg_creator( )
+        {
+            using res_type = application::service_wrapper_sptr;
+            auto creator = [this]( application *app,
+                                   vcomm::connection_iface_wptr cl ) -> res_type
+            {
+                auto id = reinterpret_cast<std::uintptr_t>(cl.lock( ).get( ));
+
+                vtrc::shared_lock lck(remote_lock_);
+                auto f  =  remote_.find( id );
+                return f == remote_.end( )
+                        ? res_type( )
+                        : create_service( app, cl, f->second );
+            };
+
+            app_->register_service_factory( svc_impl::name( ), creator );
+        }
+
+        void unreg_creator( )
+        {
+            app_->unregister_service_factory( svc_impl::name( ) );
+        }
+
     };
 
     listener::listener( application *app )
@@ -173,11 +447,13 @@ namespace msctl { namespace agent {
     void listener::start( )
     {
         impl_->start_all( );
+        impl_->reg_creator( );
         impl_->LOGINF << "Started.";
     }
 
     void listener::stop( )
     {
+        impl_->unreg_creator( );
         impl_->LOGINF << "Stopped.";
     }
 
