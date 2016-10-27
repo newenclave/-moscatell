@@ -9,9 +9,14 @@ message address_pair {
         FAMILY_INET  = 4;
         //FAMILY_INET6 = 6;
     };
+
     optional address_family family  = 1;
-    optional bytes address          = 2;
-    optional bytes mask             = 3;
+
+    optional uint32 v4_address          = 2;
+    optional uint32 v4_mask             = 3;
+
+    optional bytes  v6_address          = 4;
+    optional bytes  v6_mask             = 5;
 }
 
 message register_req {

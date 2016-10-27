@@ -35,6 +35,8 @@ namespace {
 
     using     utilities::decorators::quote;
 
+    logger_impl *gs_logger = nullptr;
+
     struct listener_info {
         vserv::listener_sptr point;
         std::string          device;
@@ -65,14 +67,18 @@ namespace {
     /// one device -> many clients
     class server_transport: public common::tuntap_transport {
 
-        std::map<std::uint32_t, server_wrapper_sptr> routes_;
-        std::set<std::uint32_t>                      free_ip_;
+        std::queue<std::uint32_t>                    free_ip_;
         utilities::address_v4_poll                   poll_;
 
         struct client_info {
             vcomm::connection_iface *connection = nullptr;
             std::uint32_t            address;
+            server_wrapper_sptr      client;
         };
+
+        using client_info_sptr = std::shared_ptr<client_info>;
+        std::map<std::uintptr_t, client_info_sptr> clients_;
+        std::map<std::uint32_t,  client_info_sptr> routes_;
 
     public:
 
@@ -98,7 +104,8 @@ namespace {
             if( srcdst.second ) {
                 auto f = routes_.find( srcdst.second );
                 if( f != routes_.end( ) ) {
-                    f->second->call_request( &server_stub::push, &req );
+                    f->second->client
+                     ->call_request( &server_stub::push, &req );
                 }
             }
 #endif
@@ -108,6 +115,7 @@ namespace {
         using shared_type = std::shared_ptr<server_transport>;
 
         void add_client_impl( vcomm::connection_iface_wptr clnt,
+                              gpb::RpcController*                controller,
                               const ::msctl::rpc::tuntap::register_req* req,
                               ::msctl::rpc::tuntap::register_res*       res,
                               gpb::Closure *done )
@@ -120,31 +128,84 @@ namespace {
                 return;
             }
 
-//            auto svc = std::make_shared<server_wrapper>
-//                                (create_event_channel(clntptr), true );
+            std::uint32_t next_addr = 0;
+            std::uint32_t next_mask = htonl(poll_.mask( ));
 
-//            routes_[ip] = svc;
-//            svc->channel( )->set_flag( vcomm::rpc_channel::DISABLE_WAIT );
+            if( !free_ip_.empty( ) ) {
+                next_addr = free_ip_.front( );
+                free_ip_.pop( );
+            } else {
+                next_addr = poll_.next( );
+            }
+
+            if( next_addr == 0 ) {
+                controller->SetFailed( "Server is full." );
+                return;
+            }
+
+            auto next_client_info = std::make_shared<client_info>( );
+            next_client_info->connection  = clntptr.get( );
+            next_client_info->address     = next_addr;
+
+            auto chan = std::make_shared<server_wrapper>
+                                (create_event_channel(clntptr), true );
+            chan->channel( )->set_flag( vcomm::rpc_channel::DISABLE_WAIT );
+
+            auto weak_this = weak_type(shared_from_this( ));
+            auto c_ptr = clntptr.get( );
+
+            auto error_cb = [this, weak_this, c_ptr]( const char *mess ) {
+                auto this_lock = weak_this.lock( );
+                if( this_lock ) {
+                    logger_impl &log_(*gs_logger);
+                    LOGERR << "Channel error for client " << std::hex
+                           << "0x" << c_ptr << " "
+                           << quote(mess)
+                           << ". Removing...";
+                    this->del_client( c_ptr );
+                }
+            };
+
+            chan->channel( )->set_channel_error_callback( error_cb );
+
+            next_client_info->client = chan;
+
+            routes_[next_addr]
+                    = clients_[reinterpret_cast<std::uintptr_t>(c_ptr)]
+                    = next_client_info;
+
+            next_addr = htonl(next_addr);
+            const char *s_addr = inet_ntoa( *(in_addr *)(&next_addr) );
+            const char *s_mask = inet_ntoa( *(in_addr *)(&next_mask) );
+
+            logger_impl &log_(*gs_logger);
+            LOGINF << "Set client address: " << s_addr << " mask: " << s_mask;
+
+            res->mutable_iface_addr( )->set_v4_address( next_addr );
+            res->mutable_iface_addr( )->set_v4_mask( next_mask );
 
         }
 
         void add_client( vcomm::connection_iface *clnt,
+                         gpb::RpcController*                controller,
                          const ::msctl::rpc::tuntap::register_req* req,
                          ::msctl::rpc::tuntap::register_res*       res,
                          gpb::Closure *done )
         {
             auto wclnt = clnt->weak_from_this( );
-            dispatch( [this, wclnt, req, res, done]( ) {
-                add_client_impl( wclnt, req, res, done );
+            dispatch( [this, wclnt, controller, req, res, done]( ) {
+                add_client_impl( wclnt, controller, req, res, done );
             } );
         }
 
         void del_client_impl( vcomm::connection_iface *clnt )
         {
-//                for( auto &p: points_ ) {
-//                    if( p.secong )
-//                    points_.erase( id );
-//                }
+            auto id = reinterpret_cast<std::uintptr_t>(clnt);
+            auto c = clients_.find( id );
+            if( c != clients_.end( ) ) {
+                routes_.erase(c->second->address);
+                clients_.erase( c );
+            }
         }
 
         void del_client( vcomm::connection_iface *clnt  )
@@ -216,12 +277,13 @@ namespace {
             return parent_type::descriptor( )->full_name( );
         }
 
-        void register_me( ::google::protobuf::RpcController* /*controller*/,
+        void register_me( ::google::protobuf::RpcController* controller,
                           const ::msctl::rpc::tuntap::register_req* request,
                           ::msctl::rpc::tuntap::register_res* response,
                           ::google::protobuf::Closure* done) override
         {
-            device_->transport->add_client( client_, request, response, done );
+            device_->transport->add_client( client_, controller,
+                                            request, response, done );
         }
 
         void push( ::google::protobuf::RpcController*   /*controller*/,
@@ -267,7 +329,9 @@ namespace {
 
         impl( logger_impl &log )
             :log_(log)
-        { }
+        {
+            gs_logger = &log_;
+        }
 
         void add_server_point( vcomm::connection_iface *c,
                                const listener::server_create_info &dev )

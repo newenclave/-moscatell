@@ -59,6 +59,11 @@ namespace utilities {
             return last_;
         }
 
+        std::uint32_t mask( ) const
+        {
+            return mask_;
+        }
+
         std::uint32_t next( )
         {
             return current_ != (last_ + 1) ? current_++ : 0;
