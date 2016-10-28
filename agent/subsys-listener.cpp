@@ -311,7 +311,7 @@ namespace {
                         LOGWRN << "Keep alive timer...Client disconnected.";
                         lck->close( );
                     } else {
-                        LOGDBG << "Keep alive timer...Pinging client...";
+                        //LOGDBG << "Keep alive timer...Pinging client...";
                         swrap_.call( &server_stub::ping );
                         start_timer( 30 );
                     }
