@@ -14,6 +14,8 @@
 #include "vtrc-common/vtrc-rpc-service-wrapper.h"
 #include "vtrc-common/vtrc-stub-wrapper.h"
 #include "vtrc-common/vtrc-mutex-typedefs.h"
+#include "vtrc-common/vtrc-delayed-call.h"
+
 #include "vtrc-server/vtrc-channels.h"
 
 #include "common/tuntap.h"
@@ -31,9 +33,11 @@ namespace {
     namespace vcomm = vtrc::common;
     namespace vserv = vtrc::server;
     namespace ba    = boost::asio;
+    namespace bs    = boost::system;
     namespace gpb   = google::protobuf;
 
-    using     utilities::decorators::quote;
+    using delayed_call = vcomm::delayed_call;
+    using utilities::decorators::quote;
 
     logger_impl *gs_logger = nullptr;
 
@@ -118,7 +122,7 @@ namespace {
             }
 #endif
 
-        }
+        }        
 
         using shared_type = std::shared_ptr<server_transport>;
 
@@ -258,12 +262,16 @@ namespace {
 
     using remote_map = std::map<std::uintptr_t, device_info_sptr>;
     using device_map = std::map<std::string,    device_info_sptr>;
+    namespace unichannels = vserv::channels::unicast;
 
     class svc_impl: public rpc::tuntap::server_instance {
 
         application                  *app_;
         vcomm::connection_iface      *client_;
         device_info_sptr              device_;
+        delayed_call                  keep_alive_;
+        std::uint64_t                 ticks_;
+        server_wrapper                swrap_;
 
     public:
 
@@ -275,15 +283,44 @@ namespace {
             :app_(app)
             ,client_(client.lock( ).get( ))
             ,device_(device)
+            ,keep_alive_(app->get_rpc_service( ))
+            ,ticks_(application::tick_count( ))
+            ,swrap_(unichannels::create_event_channel(client.lock( )), true)
         {
-//            auto &log_(app->log( ));
-//            LOGINF << "Create service for " << client.lock( )->name( );
+            start_timer( 30 );
+        }
+        void start_timer( std::uint32_t sec )
+        {
+            auto wclient = client_->weak_from_this( );
+            auto handler = [this, wclient]( const bs::error_code &err ) {
+                this->keep_alive( err, wclient );
+            };
+
+            keep_alive_.call_from_now( handler, delayed_call::seconds( sec ) );
+        }
+
+        void keep_alive( const boost::system::error_code &err,
+                         vcomm::connection_iface_wptr clnt )
+        {
+            auto &log_(*gs_logger);
+            if( !err ) {
+                auto lck = clnt.lock( );
+                if( lck ) {
+                    auto current = application::tick_count( );
+                    if( (current - ticks_) >= 60000000 ) { /// 1 minute
+                        LOGWRN << "Keep alive timer...Client disconnected.";
+                        lck->close( );
+                    } else {
+                        LOGDBG << "Keep alive timer...Pinging client...";
+                        swrap_.call( &server_stub::ping );
+                        start_timer( 30 );
+                    }
+                }
+            }
         }
 
         ~svc_impl( )
-        {
-            //device_->transport->del_client( client_ );
-        }
+        { }
 
         static std::string name( )
         {
@@ -314,6 +351,14 @@ namespace {
                              //std::cout << "" << err.message( ) << "\n";
                          }
                      } );
+        }
+        void ping( ::google::protobuf::RpcController* /*controller*/,
+                   const ::msctl::rpc::empty* /*request*/,
+                   ::msctl::rpc::empty* /*response*/,
+                   ::google::protobuf::Closure* done) override
+        {
+            vcomm::closure_holder done_holder( done );
+            ticks_ = application::tick_count( );
         }
     };
 

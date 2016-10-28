@@ -31,6 +31,7 @@ namespace {
     namespace vclnt = vtrc::client;
     namespace verrs = vtrc::rpc::errors;
     namespace ba    = boost::asio;
+    namespace bs    = boost::system;
 
     using utilities::decorators::quote;
 
@@ -46,17 +47,19 @@ namespace {
 
     struct client_info: public std::enable_shared_from_this<client_info> {
 
+        application              *app;
         vtrc_client_sptr          client;
         std::string               device;
         utilities::endpoint_info  info;
         delayed_call              timer;
-        //application              *app_;
+        bool                      active = true;
 
         using error_code = VTRC_SYSTEM::error_code;
 
-        client_info( vcomm::pool_pair &pp )
-            :client(create_client(pp))
-            ,timer(pp.get_io_service( ))
+        client_info( application *ap )
+            :app(ap)
+            ,client(create_client(app->pools( )))
+            ,timer(app->pools( ).get_io_service( ))
         { }
 
         static
@@ -67,15 +70,19 @@ namespace {
         }
 
         static
-        std::shared_ptr<client_info> create( vcomm::pool_pair &pp )
+        std::shared_ptr<client_info> create( application *app )
         {
-            auto inst = std::make_shared<client_info>( std::ref(pp) );
+            auto inst = std::make_shared<client_info>( app );
 
             return inst;
         }
 
         void start_connect( )
         {
+            if( !active ) {
+                return;
+            }
+
             auto wthis = std::weak_ptr<client_info>(shared_from_this( ));
             auto callback = [this, wthis] ( const error_code &err ) {
                 auto &log_(*gs_logger);
@@ -117,6 +124,13 @@ namespace {
                 handler( err, wthis );
             }, delayed_call::seconds( 5 ) ); /// TODO: settings?
         }
+
+        void stop( )
+        {
+            active = false;
+            timer.cancel( );
+            client->disconnect( );
+        }
     };
 
     /// p-t-p
@@ -125,6 +139,7 @@ namespace {
 
         //vclnt::base *c_;
         client_wrapper client_;
+        std::uint64_t  tick_;
 
     public:
 
@@ -163,18 +178,68 @@ namespace {
             inst->get_stream( ).assign( dev );
             return inst;
         }
+
+        void ping( )
+        {
+            client_.call( &client_stub::ping );
+        }
+
+        std::uint64_t tick( ) const { return tick_; }
+        void set_tick( std::uint64_t val ) { tick_ = val; }
+
     };
 
 
     class cnt_impl: public rpc::tuntap::client_instance {
+
         client_transport::shared_type device_;
+        vclnt::base *clnt_;
+
+        delayed_call keep_alive_;
+
     public:
-        cnt_impl( client_transport::shared_type device )
+        cnt_impl( client_transport::shared_type device, vclnt::base *c )
             :device_(device)
-        { }
+            ,clnt_(c)
+            ,keep_alive_(device->get_io_service( ))
+        {
+            device->set_tick( application::tick_count( ) );
+            start_timer( 30 );
+        }
+
+        void start_timer( std::uint32_t sec )
+        {
+            auto wclient = clnt_->weak_from_this( );
+            auto handler = [this, wclient]( const bs::error_code &err ) {
+                this->keep_alive( err, wclient );
+            };
+
+            keep_alive_.call_from_now( handler, delayed_call::seconds( sec ) );
+        }
+
+        void keep_alive( const boost::system::error_code &err,
+                         vclnt::base_wptr clnt )
+        {
+            auto &log_(*gs_logger);
+            if( !err ) {
+                auto lck = clnt.lock( );
+                if( lck ) {
+                    auto current = application::tick_count( );
+                    if( current - device_->tick( ) >= 60000000 ) { /// 1 minute
+                        LOGWRN << "Keep alive timer...Client disconnected.";
+                        lck->disconnect( );
+                    } else {
+                        LOGDBG << "Keep alive timer...Pinging server...";
+                        device_->ping( );
+                        start_timer( 30 );
+                    }
+                }
+            }
+        }
 
         ~cnt_impl( )
         {
+            keep_alive_.cancel( );
             device_->close( );
             device_.reset( );
         }
@@ -195,6 +260,15 @@ namespace {
                 });
         }
 
+        void ping( ::google::protobuf::RpcController* /*controller*/,
+                   const ::msctl::rpc::empty* /*request*/,
+                   ::msctl::rpc::empty* /*response*/,
+                   ::google::protobuf::Closure* done) override
+        {
+            vcomm::closure_holder done_holder( done );
+            device_->set_tick( application::tick_count( ) );
+        }
+
         class client_service_wrapper: public vcomm::rpc_service_wrapper {
         public:
             using service_sptr = vcomm::rpc_service_wrapper::service_sptr;
@@ -205,9 +279,10 @@ namespace {
 
         using service_wrapper_sptr = std::shared_ptr<client_service_wrapper>;
 
-        static service_wrapper_sptr create( client_transport::shared_type d)
+        static service_wrapper_sptr create( client_transport::shared_type d,
+                                            vclnt::base *clnt )
         {
-            auto svc = std::make_shared<cnt_impl>( d );
+            auto svc = std::make_shared<cnt_impl>( d, clnt );
             return std::make_shared<client_service_wrapper>( svc );
         }
     };
@@ -236,13 +311,26 @@ namespace {
             ,log_(app_->log( ))
         { }
 
+        void start( )
+        {
+
+        }
+
+        void stop( )
+        {
+            std::lock_guard<std::mutex> lck2(points_lock_);
+            for( auto &p: points_ ) {
+                p.second->stop( );
+            }
+        }
+
         void add_client( vclnt::base_sptr c, const std::string &dev )
         {
             auto device = client_transport::create( dev, c.get( ) );
 
             if( device ) {
 
-                c->assign_rpc_handler( cnt_impl::create( device ) );
+                c->assign_rpc_handler( cnt_impl::create( device, c.get( ) ) );
 
                 client_wrapper cl(c->create_channel( ), true);
 
@@ -363,7 +451,7 @@ namespace {
             auto dev   = add_info.device;
 
             auto inf  = utilities::get_endpoint_info( add_info.point );
-            auto clnt = client_info::create( app_->pools( ) );
+            auto clnt = client_info::create( app_ );
             clnt->device = dev;
             auto clnt_wptr = std::weak_ptr<client_info>( clnt );
 
@@ -429,12 +517,14 @@ namespace {
 
     void clients::start( )
     { 
+        impl_->start( );
         impl_->start_all( );
         impl_->LOGINF << "Started.";
     }
 
     void clients::stop( )
     { 
+        impl_->stop( );
         impl_->LOGINF << "Stopped.";
     }
     
