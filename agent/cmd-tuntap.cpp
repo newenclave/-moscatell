@@ -62,6 +62,8 @@ namespace msctl { namespace agent { namespace cmd {
                     if( res < 0 ) {
                         std::perror( "mktun" );
                         return 1;
+                    } else {
+                        close(res);
                     }
                 }
 

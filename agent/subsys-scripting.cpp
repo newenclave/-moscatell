@@ -140,11 +140,15 @@ namespace msctl { namespace agent {
                     return 2;
                 }
 
-                if( common::open_tun( name, true ) < 0) {
+                int tun = common::open_tun( name, true );
+                if( tun < 0) {
                     ls.push(  );
                     ls.push( std::string("Bad name value: ") + name );
                     return 2;
+                } else {
+                    close( tun );
                 }
+
 
                 if( common::set_dev_ip4( name, ip ) < 0) {
                     ls.push(  );
