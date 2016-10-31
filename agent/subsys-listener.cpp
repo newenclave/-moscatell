@@ -44,12 +44,15 @@ namespace {
     struct listener_info {
         vserv::listener_sptr point;
         std::string          device;
+        utilities::address_v4_poll addr_poll;
 
         listener_info( ) = default;
 
-        listener_info( vserv::listener_sptr p, const std::string &d )
+        listener_info( vserv::listener_sptr p,
+                       const listener::server_create_info &inf )
             :point(p)
-            ,device(d)
+            ,device(inf.device)
+            ,addr_poll(inf.addr_poll)
         { }
 
         listener_info &operator = ( const listener_info &other )
@@ -97,13 +100,13 @@ namespace {
             :parent_type(ios, 2048, parent_type::OPT_DISPATCH_READ)
             ,poll_(poll)
         {
-            //// TODO fix!
-            in_addr addr;
-            inet_aton( "192.168.0.0", &addr );
-            in_addr mask;
-            inet_aton( "255.255.255.0", &mask );
-            poll_ = utilities::address_v4_poll( ntohl(addr.s_addr),
-                                                ntohl(mask.s_addr) );
+//            //// TODO fix!
+//            in_addr addr;
+//            inet_aton( "192.168.0.0", &addr );
+//            in_addr mask;
+//            inet_aton( "255.255.255.0", &mask );
+//            poll_ = utilities::address_v4_poll( ntohl(addr.s_addr),
+//                                                ntohl(mask.s_addr) );
         }
 
         void on_read( const char *data, size_t length ) override
@@ -529,7 +532,7 @@ namespace {
                 }
 
                 std::lock_guard<std::mutex> lck(points_lock_);
-                points_[point] = listener_info( res, dev );
+                points_[point] = listener_info( res, serv_info );
                 return true;
             }
 

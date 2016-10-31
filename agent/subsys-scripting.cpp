@@ -9,6 +9,8 @@
 #include "common/utilities.h"
 #include "common/tuntap.h"
 
+#include "boost/algorithm/string.hpp"
+
 #define LOG(lev) log_(lev, "scripting") 
 #define LOGINF   LOG(logger_impl::level::info)
 #define LOGDBG   LOG(logger_impl::level::debug)
@@ -21,6 +23,7 @@ namespace msctl { namespace agent {
 
         application *gs_application = nullptr;
 
+        namespace ba        = boost::asio;
         namespace bs        = boost::system;
         namespace mlua      = msctl::lua;
         namespace objects   = mlua::objects;
@@ -186,12 +189,13 @@ namespace msctl { namespace agent {
         int lcall_add_server( lua_State *L )
         {
             //static auto &log_(gs_application->log( ));
-
             mlua::state ls(L);
             auto svc = ls.get_object(  );
             int res = 0;
             if( svc && svc->is_container( ) ) {
+
                 listener::server_create_info inf;
+
                 if( 0 != get_table_value( ls, "server",
                                           svc.get( ), "addr", inf.point ) )
                 {
@@ -202,6 +206,68 @@ namespace msctl { namespace agent {
                                           svc.get( ), "dev", inf.device ) )
                 {
                     return 2;
+                }
+
+                std::string addr_poll;
+                if( 0 != get_table_value( ls, "server",
+                                          svc.get( ), "addr_poll",
+                                          addr_poll ) )
+                {
+                    return 2;
+                }
+
+                std::vector<std::string> all;
+
+                boost::split( all, addr_poll, boost::is_any_of("/-") );
+
+                if( all.size( ) < 2 ) {
+                    ls.push(  );
+                    ls.push( std::string("Invalid string format ")
+                             + addr_poll );
+                    return 2;
+                }
+
+                bs::error_code err;
+                auto ip   = ba::ip::address_v4::from_string( all[0], err );
+                if( err ) {
+                    ls.push(  );
+                    ls.push( std::string("Invalid format ")
+                             + all[0]
+                             + std::string( " " )
+                             + err.message( ) );
+                    return 2;
+                }
+
+                auto mask = ba::ip::address_v4::from_string( all[1], err );
+                if( err ) {
+                    ls.push(  );
+                    ls.push( std::string("Invalid format ")
+                             + all[1]
+                             + std::string( " " )
+                             + err.message( ) );
+                    return 2;
+                }
+
+                ba::ip::address_v4 last;
+                if( all.size( ) > 2 ) {
+                    last = ba::ip::address_v4::from_string( all[2], err );
+                    if( err ) {
+                        ls.push(  );
+                        ls.push( std::string("Invalid format ")
+                                 + all[2]
+                                 + std::string( " " )
+                                 + err.message( ) );
+                        return 2;
+                    }
+                }
+
+                if( all.size( ) > 2 ) {
+                    inf.addr_poll = utilities::address_v4_poll( ip.to_ulong( ),
+                                                            mask.to_ulong( ),
+                                                            last.to_ulong( ) );
+                } else {
+                    inf.addr_poll = utilities::address_v4_poll( ip.to_ulong( ),
+                                                            mask.to_ulong( ) );
                 }
 
                 ls.push( gs_application->subsys<listener>( )
