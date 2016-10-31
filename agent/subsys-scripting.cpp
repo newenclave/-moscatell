@@ -6,6 +6,9 @@
 
 #include "common/moscatell-lua.h"
 
+#include "common/utilities.h"
+#include "common/tuntap.h"
+
 #define LOG(lev) log_(lev, "scripting") 
 #define LOGINF   LOG(logger_impl::level::info)
 #define LOGDBG   LOG(logger_impl::level::debug)
@@ -18,6 +21,7 @@ namespace msctl { namespace agent {
 
         application *gs_application = nullptr;
 
+        namespace bs        = boost::system;
         namespace mlua      = msctl::lua;
         namespace objects   = mlua::objects;
 
@@ -42,9 +46,19 @@ namespace msctl { namespace agent {
             return 0;
         }
 
+        int lcall_system( lua_State *L )
+        {
+            mlua::state ls(L);
+            objects::table res;
+            auto cmd = ls.get_opt<std::string>( );
+            ls.push( ::system( cmd.c_str( ) ) );
+            return 1;
+        }
+
         void register_globals( mlua::state ls )
         {
             ls.register_call( "print", &lcall_log_print );
+            ls.register_call( "shell", &lcall_system );
         }
 
         std::uint32_t get_table_value(
@@ -92,6 +106,81 @@ namespace msctl { namespace agent {
                        << "' for the field '" << name << "'";
             }
             return 0;
+        }
+
+        int lcall_add_device( lua_State *L )
+        {
+            mlua::state ls(L);
+            auto svc = ls.get_object(  );
+            int res = 0;
+            if( svc && svc->is_container( ) ) {
+                listener::server_create_info inf;
+                std::string name;
+                std::string ip;
+                std::string mask;
+
+                if( 0 != get_table_value( ls, "device",
+                                          svc.get( ), "name", name ) )
+                {
+                    return 2;
+                }
+
+                if( 0 != get_table_value( ls, "device",
+                                          svc.get( ), "mask", mask ) )
+                {
+                    return 2;
+                }
+
+                if( 0 != get_table_value( ls, "device",
+                                          svc.get( ), "ip", ip ) )
+                {
+                    return 2;
+                }
+
+                if( common::open_tun( name, true ) < 0) {
+                    ls.push(  );
+                    ls.push( std::string("Bad name value: ") + name );
+                    return 2;
+                }
+
+                if( common::set_dev_ip4( name, ip ) < 0) {
+                    ls.push(  );
+                    ls.push( std::string("Bad ip value: ") + ip );
+                    return 2;
+                }
+
+                if( common::set_dev_ip4_mask( name, mask ) < 0) {
+                    ls.push(  );
+                    ls.push( std::string("Bad mask value: ") + mask );
+                    return 2;
+                }
+
+                common::device_up( name );
+
+                ls.push( true );
+
+                res = 1;
+            } else {
+                ls.push(  );
+                ls.push( "Bad value" );
+                return 2;
+            }
+            return res;
+        }
+
+        int lcall_del_device( lua_State *L )
+        {
+            mlua::state ls(L);
+            objects::table res;
+            auto cmd = ls.get_opt<std::string>( );
+            if( common::del_tun( cmd ) < 0 ) {
+                std::error_code ec( errno, std::system_category( ) );
+                ls.push( false );
+                ls.push( ec.message( ) );
+                return 0;
+            }
+            ls.push( true );
+            return 1;
         }
 
         int lcall_add_server( lua_State *L )
@@ -233,6 +322,8 @@ namespace msctl { namespace agent {
             tab.add( "client", new_function( &lcall_add_client ) );
             tab.add( "logger", new_function( &lcall_add_logger ) );
             tab.add( "polls",  new_function( &lcall_set_polls  ) );
+            tab.add( "mkdev",  new_function( &lcall_add_device  ) );
+            tab.add( "rmdev",  new_function( &lcall_del_device  ) );
 
             ls.set_object( "msctl", &tab );
 

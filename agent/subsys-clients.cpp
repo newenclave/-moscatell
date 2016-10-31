@@ -326,11 +326,33 @@ namespace {
 
         void add_client( vclnt::base_sptr c, const std::string &dev )
         {
-            auto device = client_transport::create( dev, c.get( ) );
 
-            if( device ) {
+            struct dev_keeper {
+                client_transport::shared_type dev;
+                vclnt::base_sptr              c;
+                bool                          owned = true;
+                ~dev_keeper( )
+                {
+                    if( owned ) {
+                        if( dev ) dev->close( );
+                        c->disconnect( );
+                    }
+                }
+                void release( )
+                {
+                    owned = false;
+                }
+            };
 
-                c->assign_rpc_handler( cnt_impl::create( device, c.get( ) ) );
+            dev_keeper keeper;
+
+            keeper.dev = client_transport::create( dev, c.get( ) );
+            keeper.c   = c;
+
+            if( keeper.dev ) {
+
+                c->assign_rpc_handler( cnt_impl::create( keeper.dev,
+                                                         c.get( ) ) );
 
                 client_wrapper cl(c->create_channel( ), true);
 
@@ -352,8 +374,6 @@ namespace {
                         std::error_code ec(errno, std::system_category( ));
                         LOGERR << "Failed to assign ip: " << ec.value( )
                                << " (" << ec.message( ) << ")";
-                        c->disconnect( );
-                        device->close( );
                         return;
                     }
 
@@ -361,24 +381,28 @@ namespace {
                         std::error_code ec(errno, std::system_category( ));
                         LOGERR << "Failed to assign mask: " << ec.value( )
                                << " (" << ec.message( ) << ")";
-                        device->close( );
-                        c->disconnect( );
+                        return;
+                    }
+
+                    if( common::device_up( dev ) < 0){
+                        std::error_code ec(errno, std::system_category( ));
+                        LOGERR << "Failed to UP device: " << ec.value( )
+                               << " (" << ec.message( ) << ")";
                         return;
                     }
 
                 } catch( const std::exception &ex ) {
                     LOGERR << "Client failed to register: " << ex.what( );
-                    device->close( );
-                    c->disconnect( );
                     return;
                 }
 
+                keeper.release( );
+
                 cl.channel( )->set_flag( vcomm::rpc_channel::DISABLE_WAIT );
-                device->start_read( );
+                keeper.dev->start_read( );
 
                 std::lock_guard<std::mutex> lck(clients_lock_);
                 clients_.insert( c );
-                clients_lock_.unlock( );
 
             } else {
                 std::error_code ec(errno, std::system_category( ));
