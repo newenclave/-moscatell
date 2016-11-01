@@ -4,14 +4,27 @@
 #include <unistd.h>
 #include <net/if.h>
 
+#if defined(__linux__)
+
 #include <linux/if_tun.h>
+//#include <linux/ipv6.h>
+#include <linux/ip.h>
+
+#elif defined( __FreeBSD__) || defined( __OpenBSD__) ||  defined(__APPLE__)
+
+#include <net/if_tun.h>
+#include <netinet/ip.h>
+
+#elif defined(_WIN32)
+
+#elif
+//#error
+#endif
 
 #include <sys/ioctl.h>
 #include <fcntl.h>
 #include <netinet/in.h>
 
-//#include <linux/ipv6.h>
-#include <linux/ip.h>
 
 #include "tuntap.h"
 
