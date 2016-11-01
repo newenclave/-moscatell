@@ -10,10 +10,22 @@
 //#include <linux/ipv6.h>
 #include <linux/ip.h>
 
+#define TUNTAP_DEVICE_NAME "/dev/net/tun"
+
 #elif defined( __FreeBSD__) || defined( __OpenBSD__) ||  defined(__APPLE__)
 
+#define UNIX_CODE
+
+#include <netinet/in.h>
 #include <net/if_tun.h>
 #include <netinet/ip.h>
+
+#define TUNTAP_DEVICE_NAME "/dev/tun"
+#define IFF_TUN     0x0001
+#define IFF_TAP     0x0002
+#define IFF_NO_PI   0x1000
+
+typedef struct ip iphdr;
 
 #elif defined(_WIN32)
 
@@ -153,7 +165,8 @@ namespace msctl { namespace common {
 
     int del_persistent( const char *dev, int flags )
     {
-        const char *clonedev = "/dev/net/tun";
+#ifndef UNIX_CODE
+        const char *clonedev = TUNTAP_DEVICE_NAME;
 
         struct ifreq ifr;
         int fd = -1;
@@ -178,11 +191,15 @@ namespace msctl { namespace common {
         ioctl( fd, TUNSETPERSIST, 0 );
 
         return fd;
+#else
+        return 0;
+#endif
     }
 
+#ifndef UNIX_CODE
     int opentuntap( const char *dev, int flags, bool persis )
     {
-        const char *clonedev = "/dev/net/tun";
+        const char *clonedev = TUNTAP_DEVICE_NAME;
 
         struct ifreq ifr;
         int fd = -1;
@@ -221,6 +238,28 @@ namespace msctl { namespace common {
 
         return fd;
     }
+#else
+    int opentuntap( const char *dev, int /*flags*/, bool /*persis*/ )
+    {
+        const char *clonedev = TUNTAP_DEVICE_NAME;
+        if( dev ) {
+            std::ostringstream oss;
+            oss << "/dev/" << dev;
+            return open( oss.str( ).c_str( ), O_RDWR );
+        } else {
+            for( int i=0; i<100; ++i ) {
+                std::ostringstream oss;
+                oss << "/dev/tun" << i;
+                int fd = open( oss.str( ).c_str( ), O_RDWR );
+                if( (fd >= 0) || (errno == ENOENT) ) {
+                    return fd;
+                }
+            }
+        }
+        return -1;
+
+    }
+#endif
 
     int del_tun( const std::string &name )
     {
@@ -285,7 +324,7 @@ namespace msctl { namespace common {
         if( ioctl( s, SIOCGIFNETMASK, static_cast<void *>(&ifr) ) < 0 ) {
             return addres_mask_v4( );
         }
-        sa = reinterpret_cast<sockaddr_in *>(&ifr.ifr_netmask);
+        sa = reinterpret_cast<sockaddr_in *>(&ifr.ifr_addr);
         auto mask = ba::ip::address_v4(ntohl(sa->sin_addr.s_addr));
 
         return std::make_pair( addr, mask );
@@ -359,6 +398,18 @@ namespace msctl { namespace common {
     {
         auto hdr = reinterpret_cast<const iphdr *>(data);
 
+#ifdef UNIX_CODE
+        if( len < sizeof(*hdr) ) {
+            return src_dest_v4( );
+        }
+
+        if( hdr->ip_v != 4 ) {
+            return src_dest_v4( );
+        }
+
+        return std::make_pair( hdr->ip_src.s_addr,
+                               hdr->ip_dst.s_addr );
+#else
         if( len < sizeof(*hdr) ) {
             return src_dest_v4( );
         }
@@ -368,6 +419,7 @@ namespace msctl { namespace common {
         }
 
         return std::make_pair( hdr->saddr, hdr->daddr );
+#endif
     }
 
 #else

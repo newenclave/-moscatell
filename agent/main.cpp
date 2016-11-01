@@ -8,8 +8,6 @@
 #include "common/subsys-root.h"
 #include "common/tuntap.h"
 
-#include "linux/ip.h"
-
 #include "vtrc-common/vtrc-pool-pair.h"
 
 #include "subsys.inc"
