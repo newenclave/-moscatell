@@ -5,6 +5,7 @@ include_directories( ${PROJECT_SOURCE_DIR} )
 
 list(APPEND src_dirs
         .
+        ./os
     )
 
 foreach( src_dir ${src_dirs} )

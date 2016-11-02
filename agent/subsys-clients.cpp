@@ -158,9 +158,11 @@ namespace {
 
         void on_read( const char *data, size_t length ) override
         {
-            rpc::tuntap::push_req req;
-            req.set_value( data, length );
-            client_.call_request( &client_stub::push, &req );
+			if( common::extract_family( data, length ) == 4 ) {
+				rpc::tuntap::push_req req;
+				req.set_value( data, length );
+				client_.call_request( &client_stub::push, &req );
+			}
         }
 
         using shared_type = std::shared_ptr<client_transport>;
@@ -169,13 +171,9 @@ namespace {
         shared_type create( const std::string &device, vclnt::base *c )
         {
             using std::make_shared;
-            auto dev  = common::open_tun( device, false );
-            if( dev < 0 ) {
-                return shared_type( );
-            }
-
+            auto dev  = common::open_tun( device );
             auto inst = make_shared<client_transport>( c );
-            inst->get_stream( ).assign( dev );
+            inst->get_stream( ).assign( dev.handle );
             return inst;
         }
 
@@ -370,26 +368,11 @@ namespace {
                     LOGINF << "Got address: " << quote(addr.to_string( ))
                            << " and mask: " << quote(mask.to_string( ));
 
-                    if( common::set_dev_ip4( dev, addr.to_string( ) ) < 0 ) {
-                        std::error_code ec(errno, std::system_category( ));
-                        LOGERR << "Failed to assign ip: " << ec.value( )
-                               << " (" << ec.message( ) << ")";
-                        return;
-                    }
+					common::setup_device( keeper.dev->get_stream( ).native_handle( ),
+										  addr.to_string( ), addr.to_string( ),
+										  mask.to_string( ) );
 
-                    if( common::set_dev_ip4_mask( dev, mask.to_string( ) ) < 0){
-                        std::error_code ec(errno, std::system_category( ));
-                        LOGERR << "Failed to assign mask: " << ec.value( )
-                               << " (" << ec.message( ) << ")";
-                        return;
-                    }
-
-                    if( common::device_up( dev ) < 0){
-                        std::error_code ec(errno, std::system_category( ));
-                        LOGERR << "Failed to UP device: " << ec.value( )
-                               << " (" << ec.message( ) << ")";
-                        return;
-                    }
+					LOGINF << "Device setup success.";
 
                 } catch( const std::exception &ex ) {
                     LOGERR << "Client failed to register: " << ex.what( );

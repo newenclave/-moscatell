@@ -30,6 +30,7 @@ find_package( Boost 1.53 COMPONENTS
                 system
                 program_options
                 filesystem
+                regex # I have no idea why it has to be here on Windows
               REQUIRED)
 
 ############################ VTRC library ############################

@@ -1,5 +1,7 @@
 #include <iostream>
 
+#if 0
+
 #include <string.h>
 #include <unistd.h>
 #include <net/if.h>
@@ -36,7 +38,6 @@ typedef struct ip iphdr;
 #include <sys/ioctl.h>
 #include <fcntl.h>
 #include <netinet/in.h>
-
 
 #include "tuntap.h"
 
@@ -430,3 +431,5 @@ namespace msctl { namespace common {
 #endif
 
 }}
+
+#endif

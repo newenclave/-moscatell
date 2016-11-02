@@ -189,12 +189,12 @@ namespace {
                     = clients_[reinterpret_cast<std::uintptr_t>(c_ptr)]
                     = next_client_info;
 
-            auto s_addr = ba::ip::address_v4( next_addr );
-            auto s_mask = ba::ip::address_v4( htonl(next_mask) );
+            auto str_addr = ba::ip::address_v4( next_addr );
+            auto str_mask = ba::ip::address_v4( htonl(next_mask) );
             logger_impl &log_(*gs_logger);
 
-            LOGINF << "Set client address: " << s_addr.to_string( )
-                   << " with mask " << s_mask.to_string( );
+            LOGINF << "Set client address: " << str_addr.to_string( )
+                   << " with mask " << str_mask.to_string( );
 
             res->mutable_iface_addr( )->set_v4_address( htonl(next_addr) );
             res->mutable_iface_addr( )->set_v4_mask( next_mask );
@@ -240,17 +240,10 @@ namespace {
                             const listener::server_create_info &inf )
         {
             using std::make_shared;
-            auto dev  = common::open_tun( inf.device, false );
-            if( dev < 0 ) {
-                return shared_type( );
-            }
-//                if( common::device_up( device ) < 0) {
-//                    return shared_type( );
-//                }
-
+            auto dev  = common::open_tun( inf.device );
             auto inst = make_shared<server_transport>
                                 ( app->get_io_service( ), inf.addr_poll );
-            inst->get_stream( ).assign( dev );
+            inst->get_stream( ).assign( dev.handle );
             return inst;
         }
 

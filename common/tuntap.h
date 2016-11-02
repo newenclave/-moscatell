@@ -9,11 +9,26 @@
 #ifndef _WIN32
 #include "boost/asio/posix/stream_descriptor.hpp"
 #else
-#error "Windows is not yet supported"
+#include "boost/asio/windows/stream_handle.hpp"
 #endif
 
-
 namespace msctl { namespace common {
+
+#ifndef _WIN32
+
+	using stream_type = boost::asio::posix::stream_descriptor;
+	using tuntap_transport = async_transport::point_iface<stream_type>;
+	using native_handle = stream_type::native_handle_type;
+	static const native_handle TUN_HANDLE_INVALID_VALUE = -1;
+
+#else
+
+	using stream_type = boost::asio::windows::stream_handle;
+	using tuntap_transport = async_transport::point_iface<stream_type>;
+	using native_handle = stream_type::native_handle_type;
+	static const native_handle TUN_HANDLE_INVALID_VALUE = INVALID_HANDLE_VALUE;
+
+#endif
 
     using addres_mask_v4 = std::pair<boost::asio::ip::address_v4,
                                      boost::asio::ip::address_v4>;
@@ -22,33 +37,23 @@ namespace msctl { namespace common {
 
     using src_dest_v4 = std::pair<std::uint32_t, std::uint32_t>;
 
-    using iface_address_pair = std::pair<addres_mask_v4, addres_mask_v6>;
+	src_dest_v4 extract_ip_v4( const char *data, size_t len );
+	int extract_family( const char *data, size_t len );
 
-    iface_address_pair get_iface_address( const std::string &dev );
 
-    addres_mask_v4 get_iface_ipv4( const std::string &dev );
+	struct device_info {
+		native_handle handle = INVALID_HANDLE_VALUE;
+		std::string	  name;
+	};
 
-    src_dest_v4 extract_ip_v4( const char *data, size_t len );
+	device_info open_tun( const std::string &hint_name );
+	void clone_handle( native_handle hdl );
+	int del_tun( const std::string &name );
+	void setup_device( native_handle device,
+					   const std::string &ip,
+					   const std::string &otherip,
+					   const std::string &mask );
 
-#ifndef _WIN32
-
-    using posix_stream = boost::asio::posix::stream_descriptor;
-    using tuntap_transport = async_transport::point_iface<posix_stream>;
-
-    int open_tun(const std::string &name, bool persist);
-    int open_tap( const std::string &name, bool persist );
-    int device_up( const std::string &name );
-
-    int del_tun( const std::string &name );
-    int del_tap( const std::string &name );
-
-    int set_dev_ip4( const std::string &name, const std::string &ip );
-    int set_dev_ip4_mask(const std::string &name, const std::string &mask );
-    int set_dev_ip4_mask( const std::string &name, std::uint32_t mask );
-
-#else
-
-#endif
 }}
 
 #endif // TUNTAP_H

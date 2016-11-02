@@ -33,7 +33,7 @@ namespace msctl { namespace agent { namespace cmd {
             int run( const boost::program_options::variables_map &vm ) override
             {
 
-                int res = 0;
+                common::device_info res;
 
                 mk_ = (vm.count( "mktun" ) != 0);
                 rm_ = (vm.count( "rmtun" ) != 0);
@@ -47,8 +47,9 @@ namespace msctl { namespace agent { namespace cmd {
 
                 up_ = vm.count( "up" );
 
-                if( rm_ ) {
-                    std::cout << "Removing device " << device_ << "...";
+#ifndef _WIN32
+				if( rm_ ) {
+					std::cout << "Removing device " << device_ << "...";
                     res = common::del_tun( device_ );
                     std::cout << (res < 0 ? "FAILED" : "OK") << std::endl;
                     if( res < 0 ) {
@@ -57,17 +58,17 @@ namespace msctl { namespace agent { namespace cmd {
                     return (res < 0);
                 } else if( mk_ ) {
                     std::cout << "Adding device " << device_ << "...";
-                    res = common::open_tun( device_, true );
+                    res = common::open_tun( device_ );
                     std::cout << (res < 0 ? "FAILED" : "OK") << std::endl;
                     if( res < 0 ) {
                         std::perror( "mktun" );
                         return 1;
                     } else {
-                        close(res);
+                        common::clone_handle(res.handle);
                     }
                 }
 
-                if( up_ ) {
+				if( up_ ) {
                     std::cout << "Setting device up " << device_ << "...";
                     res = common::device_up( device_ );
                     up_ = false;
@@ -89,7 +90,8 @@ namespace msctl { namespace agent { namespace cmd {
                         mask_ = mask;
                     }
 
-                    res = common::set_dev_ip4( device_, val );
+                    res = common::setup_device( device_, val );
+
                     std::cout << (res < 0 ? "FAILED" : "OK") << std::endl;
                     if( res < 0 ) {
                         std::perror( "set-ip4" );
@@ -122,7 +124,9 @@ namespace msctl { namespace agent { namespace cmd {
                 }
 
                 return res;
-            }
+#endif
+				return 1;
+			}
 
             void opts( options_description &desc ) override
             {

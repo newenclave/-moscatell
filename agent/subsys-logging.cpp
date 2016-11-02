@@ -3,6 +3,7 @@
 #include <fstream>
 #include <map>
 #include <functional>
+#include <atomic>
 
 #ifndef _WIN32
 #include <syslog.h>
