@@ -368,11 +368,12 @@ namespace {
                     LOGINF << "Got address: " << quote(addr.to_string( ))
                            << " and mask: " << quote(mask.to_string( ));
 
-					common::setup_device( keeper.dev->get_stream( ).native_handle( ),
-										  addr.to_string( ), addr.to_string( ),
-										  mask.to_string( ) );
+                    auto hdl = keeper.dev->get_stream( ).native_handle( );
+                    common::setup_device( hdl, dev,
+                                          addr.to_string( ), addr.to_string( ),
+                                          mask.to_string( ) );
 
-					LOGINF << "Device setup success.";
+                    LOGINF << "Device setup success.";
 
                 } catch( const std::exception &ex ) {
                     LOGERR << "Client failed to register: " << ex.what( );

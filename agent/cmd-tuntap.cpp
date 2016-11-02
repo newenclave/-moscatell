@@ -48,85 +48,74 @@ namespace msctl { namespace agent { namespace cmd {
                 up_ = vm.count( "up" );
 
 #ifndef _WIN32
-				if( rm_ ) {
-					std::cout << "Removing device " << device_ << "...";
-                    res = common::del_tun( device_ );
-                    std::cout << (res < 0 ? "FAILED" : "OK") << std::endl;
-                    if( res < 0 ) {
+                if( rm_ ) {
+                    std::cout << "Removing device " << device_ << "...";
+                    int del_res = common::del_tun( device_ );
+                    std::cout << (del_res  < 0 ? "FAILED" : "OK") << std::endl;
+                    if( del_res  < 0 ) {
                         std::perror( "rmtun" );
                     }
-                    return (res < 0);
+                    return (del_res  < 0);
                 } else if( mk_ ) {
                     std::cout << "Adding device " << device_ << "...";
                     res = common::open_tun( device_ );
-                    std::cout << (res < 0 ? "FAILED" : "OK") << std::endl;
-                    if( res < 0 ) {
-                        std::perror( "mktun" );
-                        return 1;
-                    } else {
-                        common::clone_handle(res.handle);
-                    }
+                    common::close_handle(res.handle);
                 }
 
-				if( up_ ) {
+                if( up_ ) {
                     std::cout << "Setting device up " << device_ << "...";
-                    res = common::device_up( device_ );
+                    common::device_up( device_ );
                     up_ = false;
-                    std::cout << (res < 0 ? "FAILED" : "OK") << std::endl;
-                    if( res < 0 ) {
-                        std::perror( "setup_tun" );
-                        return 1;
-                    }
                 }
 
-                if( vm.count( "set-ip4" ) ) {
-                    std::cout << "Assigning addr to device "
-                              << device_ << "...";
+//                if( vm.count( "set-ip4" ) ) {
+//                    std::cout << "Assigning addr to device "
+//                              << device_ << "...";
 
-                    auto val = vm["set-ip4"].as<std::string>( );
-                    auto mask = split_addr( val );
+//                    auto val = vm["set-ip4"].as<std::string>( );
+//                    auto mask = split_addr( val );
 
-                    if( mask_.empty( ) ) {
-                        mask_ = mask;
-                    }
+//                    if( mask_.empty( ) ) {
+//                        mask_ = mask;
+//                    }
 
-                    res = common::setup_device( device_, val );
+//                    res = common::setup_device( device_, val );
 
-                    std::cout << (res < 0 ? "FAILED" : "OK") << std::endl;
-                    if( res < 0 ) {
-                        std::perror( "set-ip4" );
-                        return 1;
-                    }
-                }
+//                    std::cout << (res < 0 ? "FAILED" : "OK") << std::endl;
+//                    if( res < 0 ) {
+//                        std::perror( "set-ip4" );
+//                        return 1;
+//                    }
+//                }
 
-                if( !mask_.empty( ) ) {
-                    std::cout << "Assigning netmask to device "
-                              << device_ << "...";
+//                if( !mask_.empty( ) ) {
+//                    std::cout << "Assigning netmask to device "
+//                              << device_ << "...";
 
-                    if( mask_.find( '.' ) != std::string::npos ) {
-                        res = common::set_dev_ip4_mask( device_, mask_ );
-                    } else {
-                        auto mask_value =
-                                boost::lexical_cast<std::uint32_t>( mask_ );
-                        res = common::set_dev_ip4_mask( device_, mask_value );
-                        if( mask_value > 32 ) {
-                            std::cout << (res < 0 ? "FAILED" : "OK")
-                                      << std::endl;
-                            std::cerr << "netmask: Invalid argument";
-                        }
-                    }
+//                    if( mask_.find( '.' ) != std::string::npos ) {
+//                        res = common::set_dev_ip4_mask( device_, mask_ );
+//                    } else {
+//                        auto mask_value =
+//                                boost::lexical_cast<std::uint32_t>( mask_ );
+//                        res = common::set_dev_ip4_mask( device_, mask_value );
+//                        if( mask_value > 32 ) {
+//                            std::cout << (res < 0 ? "FAILED" : "OK")
+//                                      << std::endl;
+//                            std::cerr << "netmask: Invalid argument";
+//                        }
+//                    }
 
-                    std::cout << (res < 0 ? "FAILED" : "OK") << std::endl;
-                    if( res < 0 ) {
-                        std::perror( "netmask" );
-                        return 1;
-                    }
-                }
+//                    std::cout << (res < 0 ? "FAILED" : "OK") << std::endl;
+//                    if( res < 0 ) {
+//                        std::perror( "netmask" );
+//                        return 1;
+//                    }
+//                }
 
-                return res;
+                return 1;
 #endif
-				return 1;
-			}
+                return 1;
+            }
 
             void opts( options_description &desc ) override
             {

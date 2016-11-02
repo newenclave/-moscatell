@@ -305,12 +305,13 @@ namespace {
         return std::move( res );
     }
 
-    void clone_handle( native_handle hdl )
+    void close_handle( native_handle hdl )
     {
         CloseHandle( hdl );
     }
 
     void setup_device( native_handle dev,
+                       const std::string & /*name*/,
                        const std::string &ip,
                        const std::string &otherip,
                        const std::string &mask )
@@ -344,6 +345,11 @@ namespace {
     }
 
     int del_tun( const std::string &name ) /// not supported
+    {
+        return 0;
+    }
+
+    int device_up( const std::string &name )
     {
         return 0;
     }

@@ -46,10 +46,13 @@ namespace msctl { namespace common {
         std::string	  name;
     };
 
+    int device_up( const std::string &name );
+
     device_info open_tun( const std::string &hint_name );
-    void clone_handle( native_handle hdl );
+    void close_handle( native_handle hdl );
     int del_tun( const std::string &name );
     void setup_device( native_handle device,
+                       const std::string &name,
                        const std::string &ip,
                        const std::string &otherip,
                        const std::string &mask );
