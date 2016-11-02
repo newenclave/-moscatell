@@ -343,15 +343,18 @@ namespace {
                                    sizeof( ipdata ), &ipdata,
                                    sizeof( ipdata ), &len, NULL );
 
-		char cmdline[1024];
-		auto n = utilities::charset::make_ws_string( name, CP_UTF8 );
-		snprintf( cmdline, sizeof( cmdline ), "netsh interface ip set address \"%s\" static %s %s",
-				  utilities::charset::make_mb_string(n).c_str( ), 
-				  sip.to_string( ).c_str( ), 
-				  smask.to_string( ).c_str( ) );
-		std::cout << cmdline << "\n";
+        char cmdline[1024];
+        auto n = utilities::charset::make_ws_string( name, CP_UTF8 );
 
-		system( cmdline );
+        snprintf( cmdline, sizeof( cmdline ),
+                  "netsh interface ip set address \"%s\" static %s %s",
+                  utilities::charset::make_mb_string(n).c_str( ),
+                  sip.to_string( ).c_str( ),
+                  smask.to_string( ).c_str( ) );
+
+        std::cout << cmdline << "\n";
+
+        system( cmdline );
     }
 
     int del_tun( const std::string &name ) /// not supported
