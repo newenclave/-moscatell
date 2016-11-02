@@ -152,8 +152,10 @@ namespace {
         ifr.ifr_addr = *reinterpret_cast<sockaddr *>(&addr);
 
         if (ioctl(s, code, (caddr_t) &ifr) < 0 ) {
+            close( s.fd_ );
             return -1;
         }
+        close( s.fd_ );
         return 0;
     }
 
@@ -207,11 +209,15 @@ namespace {
     {
         device_info res;
 
-        res.handle = opentuntap( hint_name.c_str( ),
-                                 IFF_TUN | IFF_NO_PI, true );
-        if( res.handle == common::TUN_HANDLE_INVALID_VALUE ) {
+        auto hdl = opentuntap( hint_name.c_str( ),
+                               IFF_TUN | IFF_NO_PI, true );
+
+        if( hdl == common::TUN_HANDLE_INVALID_VALUE ) {
             throw_errno( "open_tun." );
         }
+
+        res.assign_name( hint_name );
+        res.assign( hdl );
 
         return std::move( res );
     }

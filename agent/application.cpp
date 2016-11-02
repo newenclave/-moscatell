@@ -126,6 +126,7 @@ namespace msctl { namespace agent {
 
     void application::quit()
     {
+        stop( );
         pp_.stop_all( );
     }
 

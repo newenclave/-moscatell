@@ -13,6 +13,8 @@
 #include "vtrc-common/vtrc-mutex-typedefs.h"
 #include "vtrc-server/vtrc-channels.h"
 
+#include "vtrc-common/vtrc-delayed-call.h"
+
 #define LOG(lev) log_(lev, "tuntap") 
 #define LOGINF   LOG(logger_impl::level::info)
 #define LOGDBG   LOG(logger_impl::level::debug)
@@ -27,7 +29,7 @@ namespace msctl { namespace agent {
 
     namespace {
         logger_impl *gs_logger = nullptr;
-
+        using delayed_call = vtrc::common::delayed_call;
     }
 
     struct tuntap::impl {
@@ -36,9 +38,12 @@ namespace msctl { namespace agent {
         tuntap       *parent_;
         logger_impl  &log_;
 
+        //delayed_call call_;
+
         impl( application *app )
             :app_(app)
             ,log_(app_->log( ))
+            //,call_(app->get_rpc_service( ))
         {
             gs_logger = &log_;
         }
@@ -46,7 +51,9 @@ namespace msctl { namespace agent {
 
         void init( )
         {
-
+//            call_.call_from_now( [this]( ... ) {
+//                app_->quit( );
+//            }, delayed_call::seconds(10) );
         }
 
     };

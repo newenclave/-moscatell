@@ -152,6 +152,7 @@ namespace msctl { namespace agent {
             return logger_;
         }
 
+
         std::uint32_t io_pools( ) const { return io_pools_; }
         void set_io_pools( std::uint32_t val ) { io_pools_ = val; }
 

@@ -5,6 +5,8 @@
 #include "boost/program_options.hpp"
 #include "common/tuntap.h"
 
+#include "boost/algorithm/string.hpp"
+
 namespace msctl { namespace agent { namespace cmd {
 
     namespace {
@@ -59,76 +61,65 @@ namespace msctl { namespace agent { namespace cmd {
                 } else if( mk_ ) {
                     std::cout << "Adding device " << device_ << "...";
                     res = common::open_tun( device_ );
-                    common::close_handle(res.handle);
+                    std::cout << "Ok";
                 }
 
                 if( up_ ) {
                     std::cout << "Setting device up " << device_ << "...";
                     common::device_up( device_ );
                     up_ = false;
+                    std::cout << "Ok";
+                }
+#endif
+                if( vm.count( "setup" ) ) {
+                    std::cout << "Assigning addr to device "
+                              << device_ << "...";
+
+                    auto val = vm["setup"].as<std::string>( );
+
+                    std::string ip1;
+                    std::string ip2;
+                    std::string mask;
+
+                    std::vector<std::string> all;
+
+                    boost::split( all, val, boost::is_any_of("/,") );
+
+                    if( all.size( ) == 2 ) {
+                        ip1 = ip2 = all[0];
+                        mask = all[1];
+                    } else if( all.size( ) == 3 ) {
+                        ip1 =  all[0];
+                        ip2 =  all[1];
+                        mask = all[2];
+                    } else {
+                        std::cerr << "Invalid string format: " << val;
+                        return 1;
+                    }
+
+                    using common::setup_device;
+                    setup_device( common::TUN_HANDLE_INVALID_VALUE,
+                                  device_,  ip1, ip2, mask );
+
+                    std::cout << "OK" << std::endl;
                 }
 
-//                if( vm.count( "set-ip4" ) ) {
-//                    std::cout << "Assigning addr to device "
-//                              << device_ << "...";
-
-//                    auto val = vm["set-ip4"].as<std::string>( );
-//                    auto mask = split_addr( val );
-
-//                    if( mask_.empty( ) ) {
-//                        mask_ = mask;
-//                    }
-
-//                    res = common::setup_device( device_, val );
-
-//                    std::cout << (res < 0 ? "FAILED" : "OK") << std::endl;
-//                    if( res < 0 ) {
-//                        std::perror( "set-ip4" );
-//                        return 1;
-//                    }
-//                }
-
-//                if( !mask_.empty( ) ) {
-//                    std::cout << "Assigning netmask to device "
-//                              << device_ << "...";
-
-//                    if( mask_.find( '.' ) != std::string::npos ) {
-//                        res = common::set_dev_ip4_mask( device_, mask_ );
-//                    } else {
-//                        auto mask_value =
-//                                boost::lexical_cast<std::uint32_t>( mask_ );
-//                        res = common::set_dev_ip4_mask( device_, mask_value );
-//                        if( mask_value > 32 ) {
-//                            std::cout << (res < 0 ? "FAILED" : "OK")
-//                                      << std::endl;
-//                            std::cerr << "netmask: Invalid argument";
-//                        }
-//                    }
-
-//                    std::cout << (res < 0 ? "FAILED" : "OK") << std::endl;
-//                    if( res < 0 ) {
-//                        std::perror( "netmask" );
-//                        return 1;
-//                    }
-//                }
-
-                return 1;
-#endif
                 return 1;
             }
 
             void opts( options_description &desc ) override
             {
                 desc.add_options( )
+#ifndef _WIN32
                 ("mktun", "make tun device; use --dev option for name")
                 ("rmtun", "remove tun device; use --dev option for name")
+                ("up,U",  "set interface up")
+#endif
+                ("setup,i", po::value<std::string>( ),
+                                "setup device ip1,ip2/mask or ip/mask; "
+                                "192.168.0.1/255.255.255.0")
                 ("dev,d", po::value<std::string>( &device_ ),
                         "device name")
-                ("set-ip4,i", po::value<std::string>( ),
-                        "set ip (v4) address")
-                ("up,U", "set interface up")
-                ("netmask,n", po::value<std::string>( &mask_ ),
-                        "set ip mask for device")
                 ;
             }
 

@@ -143,13 +143,11 @@ namespace msctl { namespace agent {
                 common::device_info tun;
 
                 try {
-                    tun = common::open_tun( name );
-                    common::setup_device( tun.handle, name, ip, ip, mask );
-                    common::close_handle( tun.handle );
+
+                    tun = std::move(common::open_tun( name ));
+                    common::setup_device( tun.get( ), name, ip, ip, mask );
+
                 } catch( const std::exception &ex ) {
-                    if( common::TUN_HANDLE_INVALID_VALUE != tun.handle ) {
-                        common::close_handle( tun.handle );
-                    }
                     ls.push( );
                     ls.push( std::string( "Failed to add device: " )
                              + name + "; " + ex.what( ) );

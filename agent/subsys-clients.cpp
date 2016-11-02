@@ -173,8 +173,8 @@ namespace {
             using std::make_shared;
             auto dev  = common::open_tun( device );
             auto inst = make_shared<client_transport>( c );
-            inst->get_stream( ).assign( dev.handle );
-			device = dev.name;
+            inst->get_stream( ).assign( dev.release( ) );
+            device = dev.name( );
             return inst;
         }
 
@@ -305,6 +305,8 @@ namespace {
         clients_set   clients_;
         std::mutex    clients_lock_;
 
+        bool          working_ = true;
+
         impl( application *app )
             :app_(app)
             ,log_(app_->log( ))
@@ -317,6 +319,7 @@ namespace {
 
         void stop( )
         {
+            working_ = false;
             std::lock_guard<std::mutex> lck2(points_lock_);
             for( auto &p: points_ ) {
                 p.second->stop( );
@@ -334,7 +337,7 @@ namespace {
                 {
                     if( owned ) {
                         if( dev ) dev->close( );
-                        c->disconnect( );
+                        if( c )   c->disconnect( );
                     }
                 }
                 void release( )
@@ -345,7 +348,7 @@ namespace {
 
             dev_keeper keeper;
 
-			std::string dev = dev_hint;
+            std::string dev = dev_hint;
             keeper.dev = client_transport::create( dev, c.get( ) );
             keeper.c   = c;
 
@@ -412,11 +415,13 @@ namespace {
                             client_info_wptr wc,
                             const std::string &point )
         {
-            LOGERR << "Client for '" << point << "' failed to init; "
-                   << " error: " << errs.code( )
-                   << " (" << errs.additional( ) << ")"
-                   << "; " << mesg
-                      ;
+            if( working_ ) {
+                LOGERR << "Client for '" << point << "' failed to init; "
+                       << " error: " << errs.code( )
+                       << " (" << errs.additional( ) << ")"
+                       << "; " << mesg
+                        ;
+            }
         }
 
         void on_connect( client_info_wptr /*wc*/, const std::string &point )
@@ -428,29 +433,33 @@ namespace {
 
         void on_disconnect( client_info_wptr wc, const std::string &point )
         {
-            using utilities::decorators::quote;
-            auto c = wc.lock( );
-            if( c ) {
-                LOGINF << "Client disconnected " << quote(point)
-                            ;
-                parent_->get_on_client_disconnect( )( c->client );
-                del_client( c->client );
-                c->start_timer( );
+            if( working_ ) {
+                using utilities::decorators::quote;
+                auto c = wc.lock( );
+                if( c ) {
+                    LOGINF << "Client disconnected " << quote(point)
+                                ;
+                    parent_->get_on_client_disconnect( )( c->client );
+                    del_client( c->client );
+                    c->start_timer( );
+                }
             }
         }
 
         void on_ready( client_info_wptr wc, const std::string &dev )
         {
             using utilities::decorators::quote;
-            auto c = wc.lock( );
-            if( c ) {
-                LOGINF << "Client is ready for device "
-                       << quote(c->device)
-                          ;
-                app_->get_rpc_service( ).post( [this, c, dev]( ) {
-                    add_client( c->client, dev );
-                } );
-                parent_->get_on_client_ready( )( c->client, dev );
+            if( working_ ) {
+                auto c = wc.lock( );
+                if( c ) {
+                    LOGINF << "Client is ready for device "
+                           << quote(c->device)
+                              ;
+                    app_->get_rpc_service( ).post( [this, c, dev]( ) {
+                        add_client( c->client, dev );
+                    } );
+                    parent_->get_on_client_ready( )( c->client, dev );
+                }
             }
         }
 

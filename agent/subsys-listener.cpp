@@ -133,7 +133,7 @@ namespace {
                               gpb::RpcController*                controller,
                               const ::msctl::rpc::tuntap::register_req* req,
                               ::msctl::rpc::tuntap::register_res*       res,
-                              gpb::Closure *done )
+                              gpb::Closure *done, empty_callback cb )
         {
             using vserv::channels::unicast::create_event_channel;
             vcomm::closure_holder done_holder( done );
@@ -198,18 +198,18 @@ namespace {
 
             res->mutable_iface_addr( )->set_v4_address( htonl(next_addr) );
             res->mutable_iface_addr( )->set_v4_mask( next_mask );
-
+            cb( );
         }
 
         void add_client( vcomm::connection_iface *clnt,
                          gpb::RpcController*                controller,
                          const ::msctl::rpc::tuntap::register_req* req,
                          ::msctl::rpc::tuntap::register_res*       res,
-                         gpb::Closure *done )
+                         gpb::Closure *done, empty_callback cb )
         {
             auto wclnt = clnt->weak_from_this( );
-            dispatch( [this, wclnt, controller, req, res, done]( ) {
-                add_client_impl( wclnt, controller, req, res, done );
+            dispatch( [this, wclnt, controller, req, res, done, cb]( ) {
+                add_client_impl( wclnt, controller, req, res, done, cb );
             } );
         }
 
@@ -243,7 +243,7 @@ namespace {
             auto dev  = common::open_tun( inf.device );
             auto inst = make_shared<server_transport>
                                 ( app->get_io_service( ), inf.addr_poll );
-            inst->get_stream( ).assign( dev.handle );
+            inst->get_stream( ).assign( dev.release( ));
             return inst;
         }
 
@@ -262,12 +262,19 @@ namespace {
 
     class svc_impl: public rpc::tuntap::server_instance {
 
+        using push_call = std::function<
+                            void ( gpb::RpcController*,
+                                   const ::msctl::rpc::tuntap::push_req*,
+                                   ::msctl::rpc::tuntap::push_res*,
+                                   ::google::protobuf::Closure* done)>;
+
         application                  *app_;
         vcomm::connection_iface      *client_;
         device_info_sptr              device_;
         delayed_call                  keep_alive_;
         std::uint64_t                 ticks_;
         server_wrapper                swrap_;
+        push_call                     pusher_;
 
     public:
 
@@ -283,6 +290,9 @@ namespace {
             ,ticks_(application::tick_count( ))
             ,swrap_(unichannels::create_event_channel(client.lock( )), true)
         {
+            namespace ph = std::placeholders;
+            pusher_ = std::bind( &svc_impl::push_disconnect, this,
+                                 ph::_1, ph::_2, ph::_3, ph::_4 );
             start_timer( 30 );
         }
         void start_timer( std::uint32_t sec )
@@ -326,16 +336,30 @@ namespace {
         void register_me( ::google::protobuf::RpcController* controller,
                           const ::msctl::rpc::tuntap::register_req* request,
                           ::msctl::rpc::tuntap::register_res* response,
-                          ::google::protobuf::Closure* done) override
+                          ::google::protobuf::Closure* done ) override
         {
+            auto cb = [this]( ){
+                namespace ph = std::placeholders;
+                pusher_ = std::bind( &svc_impl::push_default, this,
+                                     ph::_1, ph::_2, ph::_3, ph::_4 );
+            };
             device_->transport->add_client( client_, controller,
-                                            request, response, done );
+                                            request, response, done, cb );
         }
 
-        void push( ::google::protobuf::RpcController*   /*controller*/,
-                   const ::msctl::rpc::tuntap::push_req* request,
-                   ::msctl::rpc::tuntap::push_res*      /*response*/,
-                   ::google::protobuf::Closure* done) override
+        void push_disconnect( ::google::protobuf::RpcController*,
+                           const ::msctl::rpc::tuntap::push_req*,
+                           ::msctl::rpc::tuntap::push_res*,
+                           ::google::protobuf::Closure* done )
+        {
+            vcomm::closure_holder done_holder( done );
+            client_->close( ); // hasta luego, violador!
+        }
+
+        void push_default( ::google::protobuf::RpcController*   /*controller*/,
+                           const ::msctl::rpc::tuntap::push_req* request,
+                           ::msctl::rpc::tuntap::push_res*      /*response*/,
+                           ::google::protobuf::Closure* done )
         {
             vcomm::closure_holder done_holder( done );
 
@@ -348,6 +372,15 @@ namespace {
                          }
                      } );
         }
+
+        void push( ::google::protobuf::RpcController*   controller,
+                   const ::msctl::rpc::tuntap::push_req* request,
+                   ::msctl::rpc::tuntap::push_res*      response,
+                   ::google::protobuf::Closure* done) override
+        {
+            pusher_(controller, request, response, done);
+        }
+
         void ping( ::google::protobuf::RpcController* /*controller*/,
                    const ::msctl::rpc::empty* /*request*/,
                    ::msctl::rpc::empty* /*response*/,
