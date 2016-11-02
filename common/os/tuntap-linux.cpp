@@ -180,6 +180,17 @@ namespace {
         }
         return set_v4_param( devname, SIOCSIFADDR, htonl(ip.to_ulong( )) );
     }
+
+    int setip_v4_dst_addr( const char *devname, const char *ip_addr )
+    {
+        boost::system::error_code ec;
+        auto ip = ba::ip::address_v4::from_string( ip_addr, ec );
+        if( ec ) {
+            errno = ec.value( );
+            return -1;
+        }
+        return set_v4_param( devname, SIOCSIFDSTADDR, htonl(ip.to_ulong( )) );
+    }
 }
 
     src_dest_v4 extract_ip_v4( const char *data, size_t len )
@@ -257,13 +268,19 @@ namespace {
     void setup_device( native_handle /*device*/,
                        const std::string &name,
                        const std::string &ip,
-                       const std::string & /*otherip*/,
+                       const std::string &otherip,
                        const std::string &mask )
     {
         int res = setip_v4_addr( name.c_str( ), ip.c_str( ) );
         if( res < 0 ) {
             throw_errno( "ioctl(SIOCSIFADDR)" );
         }
+
+        res = setip_v4_dst_addr( name.c_str( ), otherip.c_str( ) );
+        if( res < 0 ) {
+            throw_errno( "ioctl(SIOCSIFDSTADDR)" );
+        }
+
         res = setip_v4_mask( name.c_str( ), mask.c_str( ) );
         if( res < 0 ) {
             throw_errno( "ioctl(SIOCSIFNETMASK)" );
