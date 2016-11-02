@@ -311,7 +311,7 @@ namespace {
     }
 
     void setup_device( native_handle dev,
-                       const std::string & /*name*/,
+                       const std::string &name,
                        const std::string &ip,
                        const std::string &otherip,
                        const std::string &mask )
@@ -342,6 +342,16 @@ namespace {
                                    TAP_IOCTL_CONFIG_TUN, &ipdata,
                                    sizeof( ipdata ), &ipdata,
                                    sizeof( ipdata ), &len, NULL );
+
+		char cmdline[1024];
+		auto n = utilities::charset::make_ws_string( name, CP_UTF8 );
+		snprintf( cmdline, sizeof( cmdline ), "netsh interface ip set address \"%s\" static %s %s",
+				  utilities::charset::make_mb_string(n).c_str( ), 
+				  sip.to_string( ).c_str( ), 
+				  smask.to_string( ).c_str( ) );
+		std::cout << cmdline << "\n";
+
+		system( cmdline );
     }
 
     int del_tun( const std::string &name ) /// not supported

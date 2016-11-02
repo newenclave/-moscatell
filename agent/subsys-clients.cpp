@@ -168,12 +168,13 @@ namespace {
         using shared_type = std::shared_ptr<client_transport>;
 
         static
-        shared_type create( const std::string &device, vclnt::base *c )
+        shared_type create( std::string &device, vclnt::base *c )
         {
             using std::make_shared;
             auto dev  = common::open_tun( device );
             auto inst = make_shared<client_transport>( c );
             inst->get_stream( ).assign( dev.handle );
+			device = dev.name;
             return inst;
         }
 
@@ -322,7 +323,7 @@ namespace {
             }
         }
 
-        void add_client( vclnt::base_sptr c, const std::string &dev )
+        void add_client( vclnt::base_sptr c, const std::string &dev_hint )
         {
 
             struct dev_keeper {
@@ -344,6 +345,7 @@ namespace {
 
             dev_keeper keeper;
 
+			std::string dev = dev_hint;
             keeper.dev = client_transport::create( dev, c.get( ) );
             keeper.c   = c;
 
