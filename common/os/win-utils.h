@@ -2,9 +2,38 @@
 
 #if defined(_WIN32)
 
-#include <windows.h>
+//#include <windows.h>
+//#include <ntstatus.h>
+#include <winnt.h>
 
 namespace utilities {
+
+	inline
+	void fill_native_version( OSVERSIONINFOA *info ) {
+
+		LONG( __stdcall *NtRtlGetVersion )(PRTL_OSVERSIONINFOW);
+
+		RTL_OSVERSIONINFOW oi = { 0 };
+
+		oi.dwOSVersionInfoSize = sizeof( oi );
+
+		(FARPROC&)NtRtlGetVersion = GetProcAddress( GetModuleHandleA( "ntdll.dll" ), "RtlGetVersion" );
+
+		if( !NtRtlGetVersion ) {
+			return;
+		}
+
+		if( NtRtlGetVersion( &oi ) ) {
+			return;
+		}
+
+		if( info ) {
+			info->dwBuildNumber = oi.dwBuildNumber;
+			info->dwMajorVersion = oi.dwMajorVersion;
+			info->dwMinorVersion = oi.dwMinorVersion;
+			info->dwPlatformId = oi.dwPlatformId;
+		}
+	};
 
 struct charset {
     static std::basic_string<char> make_mb_string( LPCWSTR src,
