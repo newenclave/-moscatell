@@ -167,6 +167,7 @@ namespace {
         ifaddrs *addrs = nullptr;
         int res = ::getifaddrs( &addrs );
         if( 0 != res ) {
+            //std::perror( "::getifaddrs" );
             return false;
         }
 
@@ -174,13 +175,15 @@ namespace {
         ifaddrs *p = addrs;
         size_t id = 0;
 
-        while( p && p->ifa_addr ) {
+        while( p  ) {
+            if( p->ifa_addr ) {
             switch (p->ifa_addr->sa_family) {
-            case AF_INET:
-            case AF_INET6:
-                tmp.emplace_back( p->ifa_addr, p->ifa_netmask,
-                                  p->ifa_name, id++ );
-                break;
+                case AF_INET:
+                case AF_INET6:
+                    tmp.emplace_back( p->ifa_addr, p->ifa_netmask,
+                                      p->ifa_name, id++ );
+                    break;
+                }
             }
             p = p->ifa_next;
         }
