@@ -22,6 +22,8 @@ endif( NOT CXX11_ENABLED)
 get_compiler_thread_local( THREAD_LOCAL_VALUE )
 add_definitions( -DTHREAD_LOCAL=${THREAD_LOCAL_VALUE} )
 
+find_package( Protobuf REQUIRED)
+
 set(Boost_USE_STATIC_LIBS     ON)
 set(Boost_USE_MULTITHREADED   ON)
 set(Boost_USE_STATIC_RUNTIME  ON)
@@ -30,7 +32,7 @@ find_package( Boost 1.53 COMPONENTS
                 system
                 program_options
                 filesystem
-                regex # I have no idea why it has to be here on Windows
+                #regex # I have no idea why it has to be here on Windows
               REQUIRED)
 
 ############################ VTRC library ############################
