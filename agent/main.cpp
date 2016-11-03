@@ -201,7 +201,7 @@ int main( int argc, const char **argv )
 
         if( opts.count( "application" ) == 0 )  {
 #ifndef _WIN32
-			int res = ::daemon( 1, 0 );
+            int res = ::daemon( 1, 0 );
             if( -1 == res ) {
                 std::cerr << "::daemon call failed: errno = "
                           << errno << "\n";

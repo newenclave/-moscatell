@@ -40,13 +40,12 @@ namespace msctl { namespace common {
 
 namespace {
 
-	using tstring = std::basic_string<TCHAR,
-		                        std::char_traits<TCHAR>, 
-		                        std::allocator<TCHAR> >;
+using tstring = std::basic_string<TCHAR, std::char_traits<TCHAR>,
+                                         std::allocator<TCHAR> >;
 
-	using charset = utilities::charset;
+    using charset = utilities::charset;
 
-    std::string get_error_string( DWORD	code,
+    std::string get_error_string( DWORD code,
                                   HMODULE mod = NULL,
                                   DWORD lang = 0 )
     {
@@ -302,12 +301,12 @@ namespace {
     {
         device_info res;
         tstring name;
-		auto hdl = open_tun( hint_name, name );
+        auto hdl = open_tun( hint_name, name );
         if( hdl == INVALID_HANDLE_VALUE ) {
             throw_runtime( "open_tun" );
         }
-		res.assign( hdl );
-		res.assign_name( charset::make_utf8_string( name ) );
+        res.assign( hdl );
+        res.assign_name( charset::make_utf8_string( name ) );
 
         return std::move( res );
     }
@@ -350,19 +349,19 @@ namespace {
                                    sizeof( ipdata ), &ipdata,
                                    sizeof( ipdata ), &len, NULL );
 
-		std::ostringstream cmd;
-		auto ws = charset::make_ws_string( name, CP_UTF8 );
-		auto mb = charset::make_mb_string( ws );
+        std::ostringstream cmd;
+        auto ws = charset::make_ws_string( name, CP_UTF8 );
+        auto mb = charset::make_mb_string( ws );
 
-		using utilities::decorators::quote;
+        using utilities::decorators::quote;
 
-		/// netsh interface ip set address "iface name" static ip mask > NUL
-		cmd << "netsh interface ip set address " << quote( mb, '"' )
-			<< " static "
-			<< sip.to_string( ).c_str( ) << " "
-			<< smask.to_string( ).c_str( )
-			<< " > NUL"
-			;
+        /// netsh interface ip set address "iface name" static ip mask > NUL
+        cmd << "netsh interface ip set address " << quote( mb, '"' )
+            << " static "
+            << sip.to_string( ).c_str( ) << " "
+            << smask.to_string( ).c_str( )
+            << " > NUL"
+               ;
         system( cmd.str( ).c_str( ) );
     }
 

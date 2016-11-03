@@ -99,15 +99,7 @@ namespace {
                           const utilities::address_v4_poll &poll )
             :parent_type(ios, 2048, parent_type::OPT_DISPATCH_READ)
             ,poll_(poll)
-        {
-//            //// TODO fix!
-//            in_addr addr;
-//            inet_aton( "192.168.0.0", &addr );
-//            in_addr mask;
-//            inet_aton( "255.255.255.0", &mask );
-//            poll_ = utilities::address_v4_poll( ntohl(addr.s_addr),
-//                                                ntohl(mask.s_addr) );
-        }
+        { }
 
         void on_read( const char *data, size_t length ) override
         {
@@ -130,8 +122,8 @@ namespace {
         using shared_type = std::shared_ptr<server_transport>;
 
         void add_client_impl( vcomm::connection_iface_wptr clnt,
-                              gpb::RpcController*                controller,
-                              const ::msctl::rpc::tuntap::register_req* req,
+                              gpb::RpcController*          controller,
+                              const ::msctl::rpc::tuntap::register_req* /*req*/,
                               ::msctl::rpc::tuntap::register_res*       res,
                               gpb::Closure *done, empty_callback cb )
         {
@@ -196,7 +188,10 @@ namespace {
             LOGINF << "Set client address: " << str_addr.to_string( )
                    << " with mask " << str_mask.to_string( );
 
-            res->mutable_iface_addr( )->set_v4_address( htonl(next_addr) );
+            res->mutable_iface_addr( )->set_v4_saddr( htonl(next_addr) );
+            res->mutable_iface_addr( )->set_v4_daddr( htonl(next_addr &
+                                                            next_mask) );
+
             res->mutable_iface_addr( )->set_v4_mask( next_mask );
             cb( );
         }
@@ -435,8 +430,8 @@ namespace {
                 remote_[id] = info;
 
             } else {
-                /// ok there is no device
 
+                /// ok there is no device
                 info = std::make_shared<device_info>( );
                 info->name      = dev.device;
                 info->transport = server_transport::create( app_, dev );

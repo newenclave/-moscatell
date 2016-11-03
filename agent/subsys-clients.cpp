@@ -158,11 +158,11 @@ namespace {
 
         void on_read( const char *data, size_t length ) override
         {
-			if( common::extract_family( data, length ) == 4 ) {
-				rpc::tuntap::push_req req;
-				req.set_value( data, length );
-				client_.call_request( &client_stub::push, &req );
-			}
+            if( common::extract_family( data, length ) == 4 ) {
+                rpc::tuntap::push_req req;
+                req.set_value( data, length );
+                client_.call_request( &client_stub::push, &req );
+            }
         }
 
         using shared_type = std::shared_ptr<client_transport>;
@@ -364,18 +364,22 @@ namespace {
                     rpc::tuntap::register_res res;
                     cl.call( &client_stub::register_me, &req, &res );
 
-                    auto naddr = ntohl(res.iface_addr( ).v4_address( ));
+                    auto naddr = ntohl(res.iface_addr( ).v4_saddr( ));
+                    auto ndaddr = ntohl(res.iface_addr( ).v4_daddr( ));
                     auto nmask = ntohl(res.iface_addr( ).v4_mask( ));
 
-                    ba::ip::address_v4 addr(naddr);
+                    ba::ip::address_v4 saddr(naddr);
+                    ba::ip::address_v4 daddr(ndaddr);
                     ba::ip::address_v4 mask(nmask);
 
-                    LOGINF << "Got address: " << quote(addr.to_string( ))
+                    LOGINF << "Got address: " << quote(saddr.to_string( ))
+                           << ", " << daddr.to_string( )
                            << " and mask: " << quote(mask.to_string( ));
 
                     auto hdl = keeper.dev->get_stream( ).native_handle( );
                     common::setup_device( hdl, dev,
-                                          addr.to_string( ), addr.to_string( ),
+                                          saddr.to_string( ),
+                                          daddr.to_string( ),
                                           mask.to_string( ) );
 
                     LOGINF << "Device setup success.";

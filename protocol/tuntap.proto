@@ -12,11 +12,14 @@ message address_pair {
 
     optional address_family family  = 1;
 
-    optional uint32 v4_address          = 2;
+    optional uint32 v4_saddr            = 2;
     optional uint32 v4_mask             = 3;
 
-    optional bytes  v6_address          = 4;
+    optional bytes  v6_saddr            = 4;
     optional bytes  v6_mask             = 5;
+
+    optional uint32 v4_daddr            = 6;
+    optional bytes  v6_daddr            = 7;
 }
 
 message register_req {
