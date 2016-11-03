@@ -12,6 +12,8 @@
 #include "win-ip-header.h"
 #include "win-utils.h"
 
+#include "../utilities.h"
+
 #include "boost/asio/ip/address.hpp"
 
 #define TAP_CONTROL_CODE(request, method) \
@@ -35,10 +37,14 @@
 
 namespace msctl { namespace common {
 
-using tstring = std::basic_string<TCHAR,
-                    std::char_traits<TCHAR>, std::allocator<TCHAR> >;
 
 namespace {
+
+	using tstring = std::basic_string<TCHAR,
+		                        std::char_traits<TCHAR>, 
+		                        std::allocator<TCHAR> >;
+
+	using charset = utilities::charset;
 
     std::string get_error_string( DWORD	code,
                                   HMODULE mod = NULL,
@@ -296,11 +302,12 @@ namespace {
     {
         device_info res;
         tstring name;
-        res.handle = open_tun( hint_name, name );
-        if( res.handle == INVALID_HANDLE_VALUE ) {
+		auto hdl = open_tun( hint_name, name );
+        if( hdl == INVALID_HANDLE_VALUE ) {
             throw_runtime( "open_tun" );
         }
-        res.name = utilities::charset::make_utf8_string( name );
+		res.assign( hdl );
+		res.assign_name( charset::make_utf8_string( name ) );
 
         return std::move( res );
     }
@@ -316,10 +323,10 @@ namespace {
                        const std::string &otherip,
                        const std::string &mask )
     {
-        using av4 = boost::asio::ip::address_v4;
-        av4 sip = av4::from_string( ip );
+        using av4  = boost::asio::ip::address_v4;
+        av4 sip    = av4::from_string( ip );
         av4 sother = av4::from_string( otherip );
-        av4 smask = av4::from_string( mask );
+        av4 smask  = av4::from_string( mask );
 
         DWORD status = 1;
         DWORD len;
@@ -329,7 +336,7 @@ namespace {
             htonl( smask.to_ulong( ) )
         };
 
-        bool_checker chkr( "tun_setip" );
+        bool_checker chkr( "setup_device" );
 
         chkr( "DeviceIoControl(TAP_IOCTL_SET_MEDIA_STATUS)" )
                 = DeviceIoControl( dev,
@@ -343,18 +350,20 @@ namespace {
                                    sizeof( ipdata ), &ipdata,
                                    sizeof( ipdata ), &len, NULL );
 
-        char cmdline[1024];
-        auto n = utilities::charset::make_ws_string( name, CP_UTF8 );
+		std::ostringstream cmd;
+		auto ws = charset::make_ws_string( name, CP_UTF8 );
+		auto mb = charset::make_mb_string( ws );
 
-        snprintf( cmdline, sizeof( cmdline ),
-                  "netsh interface ip set address \"%s\" static %s %s",
-                  utilities::charset::make_mb_string(n).c_str( ),
-                  sip.to_string( ).c_str( ),
-                  smask.to_string( ).c_str( ) );
+		using utilities::decorators::quote;
 
-        std::cout << cmdline << "\n";
-
-        system( cmdline );
+		/// netsh interface ip set address "iface name" static ip mask > NUL
+		cmd << "netsh interface ip set address " << quote( mb, '"' )
+			<< " static "
+			<< sip.to_string( ).c_str( ) << " "
+			<< smask.to_string( ).c_str( )
+			<< " > NUL"
+			;
+        system( cmd.str( ).c_str( ) );
     }
 
     int del_tun( const std::string &name ) /// not supported
@@ -362,7 +371,7 @@ namespace {
         return 0;
     }
 
-    int device_up( const std::string &name )
+    int device_up( const std::string &name ) /// not supported
     {
         return 0;
     }
