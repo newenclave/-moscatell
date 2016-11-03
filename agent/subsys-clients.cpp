@@ -349,7 +349,6 @@ namespace {
             dev_keeper keeper;
 
             std::string dev = dev_hint;
-            std::cerr << "Start device!\n";
             keeper.dev = client_transport::create( dev, c.get( ) );
             keeper.c   = c;
 
