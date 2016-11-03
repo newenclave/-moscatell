@@ -1,4 +1,5 @@
 #include "net-ifaces.h"
+#include <iostream>
 
 #ifdef _WIN32
 #include <winsock2.h>
@@ -78,11 +79,14 @@ namespace {
 
         while( res == ERROR_BUFFER_OVERFLOW ) {
             tmp_data.resize( size + 1 );
-            auto p = reinterpret_cast<PIP_ADAPTER_ADDRESSES>(&tmp_data[0]);
-            res = GetAdaptersAddresses( family, flags, NULL, p, &size );
-            if( res == ERROR_SUCCESS ) {
-                while( p ) {
-                    tmp.emplace_back(
+			// PIP_ADAPTER_ADDRESSES_LH
+			auto p = reinterpret_cast<PIP_ADAPTER_ADDRESSES>(&tmp_data[0]);
+			res = GetAdaptersAddresses( family, flags, NULL, (PIP_ADAPTER_ADDRESSES)p, &size );
+			if( res == ERROR_SUCCESS ) {
+				while( p ) {
+					//std::cout << make_mb_string( p->FriendlyName, CP_UTF8 )
+					//	<< " mask " << (int)p->FirstUnicastAddress->OnLinkPrefixLength << "\n";
+					tmp.emplace_back(
                                 p->FirstUnicastAddress->Address.lpSockaddr,
                                 reinterpret_cast<const sockaddr *>(&mask0),
                                 make_mb_string(p->FriendlyName, CP_UTF8),

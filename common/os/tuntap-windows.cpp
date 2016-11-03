@@ -13,6 +13,7 @@
 #include "win-utils.h"
 
 #include "../utilities.h"
+#include "../net-ifaces.h"
 
 #include "boost/asio/ip/address.hpp"
 
@@ -354,6 +355,8 @@ using tstring = std::basic_string<TCHAR, std::char_traits<TCHAR>,
         auto mb = charset::make_mb_string( ws );
 
         using utilities::decorators::quote;
+
+		auto iff = utilities::get_system_ifaces( );
 
         /// netsh interface ip set address "iface name" static ip mask > NUL
         cmd << "netsh interface ip set address " << quote( mb, '"' )
