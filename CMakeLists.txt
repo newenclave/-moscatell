@@ -28,12 +28,21 @@ set(Boost_USE_STATIC_LIBS     ON)
 set(Boost_USE_MULTITHREADED   ON)
 set(Boost_USE_STATIC_RUNTIME  ON)
 
-find_package( Boost 1.53 COMPONENTS
-                system
-                program_options
-                filesystem
-                #regex # I have no idea why it has to be here on Windows
-              REQUIRED)
+
+if(MSVC) 
+    find_package( Boost 1.53 COMPONENTS
+                    system
+                    program_options
+                    filesystem
+                    regex # I have no idea why it has to be here on Windows
+                  REQUIRED)
+else( )
+    find_package( Boost 1.53 COMPONENTS
+                    system
+                    program_options
+                    filesystem
+                  REQUIRED)
+endif( )
 
 ############################ VTRC library ############################
 find_file( VTRC_IMPORT_CMAKE
