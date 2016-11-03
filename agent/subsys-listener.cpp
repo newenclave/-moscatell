@@ -245,7 +245,7 @@ namespace {
             inst->addr_ = ba::ip::address_v4( addr_mask.first );
             inst->mask_ = ba::ip::address_v4( addr_mask.second );
 
-            std::cerr <<
+            //std::cerr <<
 
             inst->get_stream( ).assign( dev.release( ));
             return inst;

@@ -3,6 +3,8 @@
 #if defined(__linux__)
 
 #include <string.h>
+#include <iostream>
+
 #include <unistd.h>
 #include <net/if.h>
 
