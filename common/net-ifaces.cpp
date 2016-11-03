@@ -81,18 +81,21 @@ namespace {
 
         while( res == ERROR_BUFFER_OVERFLOW ) {
             tmp_data.resize( size + 1 );
-			OSVERSIONINFO ovx = { 0 };
-			ovx.dwOSVersionInfoSize = sizeof( ovx );
-			GetVersionEx( (LPOSVERSIONINFO)&ovx );
-			utilities::fill_native_version( &ovx );
-			// PIP_ADAPTER_ADDRESSES_LH if os version major >= 6
-			auto p = reinterpret_cast<PIP_ADAPTER_ADDRESSES>(&tmp_data[0]);
-			res = GetAdaptersAddresses( family, flags, NULL, (PIP_ADAPTER_ADDRESSES)p, &size );
-			if( res == ERROR_SUCCESS ) {
-				while( p ) {
-					//std::cout << make_mb_string( p->FriendlyName, CP_UTF8 )
-					//	<< " mask " << (int)p->FirstUnicastAddress->OnLinkPrefixLength << "\n";
-					tmp.emplace_back(
+            OSVERSIONINFO ovx = { 0 };
+            ovx.dwOSVersionInfoSize = sizeof( ovx );
+            GetVersionEx( (LPOSVERSIONINFO)&ovx );
+            utilities::fill_native_version( &ovx );
+            // PIP_ADAPTER_ADDRESSES_LH if os version major >= 6
+            auto p = reinterpret_cast<PIP_ADAPTER_ADDRESSES>(&tmp_data[0]);
+            res = GetAdaptersAddresses( family, flags, NULL,
+                                        (PIP_ADAPTER_ADDRESSES)p, &size );
+            if( res == ERROR_SUCCESS ) {
+                while( p ) {
+                    //std::cout << make_mb_string( p->FriendlyName, CP_UTF8 )
+                    // << " mask "
+                    // << (int)p->FirstUnicastAddress->OnLinkPrefixLength
+                    // << "\n";
+                    tmp.emplace_back(
                                 p->FirstUnicastAddress->Address.lpSockaddr,
                                 reinterpret_cast<const sockaddr *>(&mask0),
                                 make_mb_string(p->FriendlyName, CP_UTF8),
