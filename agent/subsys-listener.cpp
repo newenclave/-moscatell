@@ -239,10 +239,13 @@ namespace {
             auto dev  = common::open_tun( inf.device );
             auto inst = make_shared<server_transport>
                                 ( app->get_io_service( ), inf.addr_poll );
+
             auto addr_mask = common::iface_v4_addr( inf.device );
 
             inst->addr_ = ba::ip::address_v4( addr_mask.first );
             inst->mask_ = ba::ip::address_v4( addr_mask.second );
+
+            std::cerr <<
 
             inst->get_stream( ).assign( dev.release( ));
             return inst;

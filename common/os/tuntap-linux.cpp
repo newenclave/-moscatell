@@ -267,11 +267,14 @@ namespace {
     {
         auto all = utilities::get_system_ifaces( );
         for( auto &i: all ) {
+            std::cout << "Check: " << i << std::endl;
             if( i.name( ) == device && i.is_v4( ) ) {
+                std::cout << "Return: " << i << std::endl;
                 return std::make_pair( htonl(i.v4( ).to_ulong( )),
                                        htonl(i.mask( ).to_v4( ).to_ulong( )));
             }
         }
+        std::cout << "Empty"<< std::endl;
         return src_dest_v4( );
     }
 
