@@ -360,13 +360,10 @@ namespace {
 
                 client_wrapper cl(c->create_channel( ), true);
 
-                std::cerr << "Start ask!\n";
-
                 try {
                     rpc::tuntap::register_req req;
                     rpc::tuntap::register_res res;
                     cl.call( &client_stub::register_me, &req, &res );
-                    std::cerr << "Call sent!\n";
 
                     auto naddr = ntohl(res.iface_addr( ).v4_address( ));
                     auto nmask = ntohl(res.iface_addr( ).v4_mask( ));
