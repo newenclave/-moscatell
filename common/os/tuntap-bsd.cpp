@@ -169,19 +169,24 @@ namespace {
                        const std::string &otherip,
                        const std::string &mask )
     {
+        using av4  = boost::asio::ip::address_v4;
+        av4 sip    = av4::from_string( ip );
+        av4 sother = av4::from_string( otherip );
+        av4 smask  = av4::from_string( mask );
+
         std::ostringstream oss;
 
+        if( !sother.to_ulong( ) ) {
+            sother = av4( sip.to_ulong( ) & smask.to_ulong( ) );
+        }
+
         oss << "ifconfig " << quote(name, '"')
-            << " " << ip << " " << otherip
+            << " " << ip << " " << sother.to_string( )
             << " netmask " << mask;
 
         system( oss.str( ).c_str( ) );
 
         return;
-        using av4  = boost::asio::ip::address_v4;
-        av4 sip    = av4::from_string( ip );
-        av4 sother = av4::from_string( otherip );
-        av4 smask  = av4::from_string( mask );
 
         set_v4_params( device, name.c_str( ),
                        sip.to_ulong( ),
