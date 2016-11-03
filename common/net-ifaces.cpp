@@ -174,7 +174,7 @@ namespace {
         ifaddrs *p = addrs;
         size_t id = 0;
 
-        while( p ) {
+        while( p && p->ifa_addr ) {
             switch (p->ifa_addr->sa_family) {
             case AF_INET:
             case AF_INET6:

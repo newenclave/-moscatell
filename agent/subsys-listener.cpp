@@ -189,9 +189,9 @@ namespace {
             LOGINF << "Set client address: " << str_addr.to_string( )
                    << " with mask " << str_mask.to_string( );
 
-            //auto my_addr = addr_.to_v4( ).to_ulong( );
+            auto my_addr = addr_.to_v4( ).to_ulong( );
             res->mutable_iface_addr( )->set_v4_saddr( htonl(next_addr) );
-            //res->mutable_iface_addr( )->set_v4_daddr( my_addr );
+            res->mutable_iface_addr( )->set_v4_daddr( my_addr );
 
             res->mutable_iface_addr( )->set_v4_mask( next_mask );
             cb( );
