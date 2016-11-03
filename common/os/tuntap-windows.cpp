@@ -356,7 +356,7 @@ using tstring = std::basic_string<TCHAR, std::char_traits<TCHAR>,
 
         using utilities::decorators::quote;
 
-		auto iff = utilities::get_system_ifaces( );
+        auto iff = utilities::get_system_ifaces( );
 
         /// netsh interface ip set address "iface name" static ip mask > NUL
         cmd << "netsh interface ip set address " << quote( mb, '"' )

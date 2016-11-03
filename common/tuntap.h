@@ -122,6 +122,8 @@ namespace msctl { namespace common {
                        const std::string &otherip,
                        const std::string &mask );
 
+    src_dest_v4 iface_v4_addr( const std::string &device );
+
 }}
 
 #endif // TUNTAP_H

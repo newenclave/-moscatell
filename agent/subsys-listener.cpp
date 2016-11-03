@@ -20,6 +20,7 @@
 
 #include "common/tuntap.h"
 #include "common/utilities.h"
+#include "common/net-ifaces.h"
 
 #define LOG(lev) log_(lev, "listener")
 #define LOGINF   LOG(logger_impl::level::info)
@@ -87,6 +88,9 @@ namespace {
         std::map<std::uintptr_t, client_info_sptr> clients_;
         std::map<std::uint32_t,  client_info_sptr> routes_;
 
+        ba::ip::address addr_;
+        ba::ip::address mask_;
+
     public:
 
         using route_map = std::map<ba::ip::address, server_wrapper>;
@@ -105,8 +109,7 @@ namespace {
         {
             rpc::tuntap::push_req req;
             req.set_value( data, length );
-#ifdef _WIN32
-#else
+
             auto srcdst = common::extract_ip_v4( data, length );
             if( srcdst.second ) {
                 auto f = routes_.find( srcdst.second );
@@ -115,8 +118,6 @@ namespace {
                      ->call_request( &server_stub::push, &req );
                 }
             }
-#endif
-
         }        
 
         using shared_type = std::shared_ptr<server_transport>;
@@ -188,9 +189,9 @@ namespace {
             LOGINF << "Set client address: " << str_addr.to_string( )
                    << " with mask " << str_mask.to_string( );
 
+            auto my_addr = addr_.to_v4( ).to_ulong( );
             res->mutable_iface_addr( )->set_v4_saddr( htonl(next_addr) );
-            res->mutable_iface_addr( )->set_v4_daddr( htonl(next_addr &
-                                                            next_mask) );
+            res->mutable_iface_addr( )->set_v4_daddr( my_addr );
 
             res->mutable_iface_addr( )->set_v4_mask( next_mask );
             cb( );
@@ -238,6 +239,11 @@ namespace {
             auto dev  = common::open_tun( inf.device );
             auto inst = make_shared<server_transport>
                                 ( app->get_io_service( ), inf.addr_poll );
+            auto addr_mask = common::iface_v4_addr( inf.device );
+
+            inst->addr_ = ba::ip::address_v4( addr_mask.first );
+            inst->mask_ = ba::ip::address_v4( addr_mask.second );
+
             inst->get_stream( ).assign( dev.release( ));
             return inst;
         }
@@ -476,7 +482,7 @@ namespace {
                                const listener::server_create_info &inf )
         {
             LOGERR << "Accept failed on listener: " << quote(inf.point)
-                   << "' assigned to device " << quote(inf.device) << "; "
+                   << " assigned to device " << quote(inf.device) << "; "
                    << "Error: " << err.value( )
                    << " (" << err.message( ) << ")"
                       ;

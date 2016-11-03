@@ -416,7 +416,7 @@ namespace {
 
         void on_init_error( const verrs::container &errs,
                             const char *mesg,
-                            client_info_wptr wc,
+                            client_info_wptr /*wc*/,
                             const std::string &point )
         {
             if( working_ ) {
