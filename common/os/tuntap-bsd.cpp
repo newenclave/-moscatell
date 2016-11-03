@@ -32,6 +32,8 @@ namespace msctl { namespace common {
 
 namespace {
 
+    namespace ba = boost::asio;
+
     using utilities::decorators::quote;
 
     void throw_errno( const std::string &name )
@@ -163,6 +165,35 @@ namespace {
         return system( cmd.str( ).c_str( ) );
     }
 
+    addres_mask_v4 get_v4( const std::string &dev )
+    {
+        struct ifreq ifr;
+        memset( &ifr, 0, sizeof(ifr) );
+
+        strncpy( ifr.ifr_name, dev.c_str( ), IFNAMSIZ );
+
+        fd_keeper s(socket(AF_INET, SOCK_DGRAM, 0));
+
+        if( s < 0 )  {
+            return addres_mask_v4( );
+        }
+
+        if( ioctl( s, SIOCGIFADDR, static_cast<void *>(&ifr) ) < 0 ) {
+            return addres_mask_v4( );
+        }
+        sockaddr_in * sa = reinterpret_cast<sockaddr_in *>(&ifr.ifr_addr);
+        auto addr = ba::ip::address_v4(ntohl(sa->sin_addr.s_addr));
+
+        if( ioctl( s, SIOCGIFNETMASK, static_cast<void *>(&ifr) ) < 0 ) {
+            return addres_mask_v4( );
+        }
+        sa = reinterpret_cast<sockaddr_in *>(&ifr.ifr_addr);
+        auto mask = ba::ip::address_v4(ntohl(sa->sin_addr.s_addr));
+
+        return std::make_pair( addr, mask );
+    }
+
+
     void setup_device( native_handle device,
                        const std::string &name,
                        const std::string &ip,
@@ -185,6 +216,10 @@ namespace {
             << " netmask " << mask;
 
         system( oss.str( ).c_str( ) );
+
+//        auto v4get = get_v4( name.c_str( ) );
+
+//        std::cerr << v4get.first << " " << v4get.second << "\n";
 
         return;
 
