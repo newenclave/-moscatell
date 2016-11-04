@@ -44,16 +44,16 @@ namespace {
         return bai::address_v6( bytes );
     }
 
-	bai::address from_sock_addr( const sockaddr *sa )
-	{
-		switch( sa->sa_family ) {
-		case AF_INET:
-			return from_sock_addr4( sa );
-		case AF_INET6:
-			return from_sock_addr6( sa );
-		}
-		return bai::address( );
-	}
+    bai::address from_sock_addr( const sockaddr *sa )
+    {
+        switch( sa->sa_family ) {
+        case AF_INET:
+            return from_sock_addr4( sa );
+        case AF_INET6:
+            return from_sock_addr6( sa );
+        }
+        return bai::address( );
+    }
 
 #ifdef _WIN32
     typedef std::vector<MIB_IPADDRROW>         mib_table_type;
@@ -308,7 +308,7 @@ namespace {
 #else 
             bool has_mask = true;
 #endif
-            if( has_mask ) { /// visa has ipv6 masks
+            if( has_mask ) { /// vista has ipv6 masks
 
                 auto sa = sockaddr_.to_v6( ).to_bytes( );
                 auto ma = mask_.to_v6( ).to_bytes( );
@@ -368,7 +368,7 @@ namespace {
             return bai::address_v6( );
         }
 
-        bai::address_v6::bytes_type bytes { 0, 0, 0, 0, 0, 0, 0, 0 };
+        bai::address_v6::bytes_type bytes { { 0, 0, 0, 0, 0, 0, 0, 0 } };
         for( std::uint32_t i=0; (i < bytes.max_size( )) && (0 != bits); i++ ) {
             if( bits >= 8 ) {
                 bytes[i] = 0xFF;
