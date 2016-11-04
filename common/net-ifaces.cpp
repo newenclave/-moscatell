@@ -95,7 +95,7 @@ namespace {
         return fill_native_version( &ov ) && (ov.dwMajorVersion >= 6);
     }
 
-    static std::string make_mb_string( LPCWSTR src, UINT CodePage = CP_ACP )
+    static std::string make_mb_string( LPCWSTR src, UINT CodePage = CP_UTF8 )
     {
         int cch = WideCharToMultiByte( CodePage, 0, src, -1, 0, 0, 0, 0 );
 
