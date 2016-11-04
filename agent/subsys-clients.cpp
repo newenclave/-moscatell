@@ -360,13 +360,15 @@ namespace {
                 client_wrapper cl(c->create_channel( ), true);
 
                 try {
+
                     rpc::tuntap::register_req req;
                     rpc::tuntap::register_res res;
+
                     cl.call( &client_stub::register_me, &req, &res );
 
-                    auto naddr = ntohl(res.iface_addr( ).v4_saddr( ));
+                    auto naddr  = ntohl(res.iface_addr( ).v4_saddr( ));
                     auto ndaddr = ntohl(res.iface_addr( ).v4_daddr( ));
-                    auto nmask = ntohl(res.iface_addr( ).v4_mask( ));
+                    auto nmask  = ntohl(res.iface_addr( ).v4_mask( ));
 
                     ba::ip::address_v4 saddr(naddr);
                     ba::ip::address_v4 daddr(ndaddr);

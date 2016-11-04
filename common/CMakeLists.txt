@@ -1,5 +1,5 @@
 
-set(lib_name ${PROJECT_NAME}_common_s)
+set(lib_name ${PROJECT_NAME}_common )
 
 include_directories( ${PROJECT_SOURCE_DIR} )
 
