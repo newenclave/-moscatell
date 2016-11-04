@@ -124,7 +124,7 @@ namespace {
 
         DWORD res = ERROR_BUFFER_OVERFLOW;
         ULONG size = 0;
-        std::vector<char> tmp_data;
+        std::vector<char> tdata;
 
         iface_info_list tmp;
 
