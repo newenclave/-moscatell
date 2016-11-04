@@ -12,7 +12,7 @@
 #include "subsys-logging.h"
 #include "application.h"
 
-#include "logger-impl.h"
+#include "common/logger-impl.h"
 #include "common/utilities.h"
 
 #include "vtrc-common/vtrc-delayed-call.h"

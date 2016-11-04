@@ -8,8 +8,10 @@
 
 #include "common/utilities.h"
 #include "common/tuntap.h"
+#include "common/net-ifaces.h"
 
 #include "boost/algorithm/string.hpp"
+
 
 #define LOG(lev) log_(lev, "scripting") 
 #define LOGINF   LOG(logger_impl::level::info)
@@ -27,6 +29,8 @@ namespace msctl { namespace agent {
         namespace bs        = boost::system;
         namespace mlua      = msctl::lua;
         namespace objects   = mlua::objects;
+
+        using utilities::decorators::quote;
 
         int lcall_log_print( lua_State *L )
         {
@@ -64,6 +68,68 @@ namespace msctl { namespace agent {
             ls.register_call( "shell", &lcall_system );
         }
 
+        struct table_wrap {
+
+            lua_State                *state;
+            const objects::base_sptr  ptr;
+
+            table_wrap( lua_State *s, const objects::base *p )
+                :state(s)
+                ,ptr(p->clone( ))
+            { }
+
+            table_wrap( lua_State *s, objects::base_sptr p )
+                :state(s)
+                ,ptr(p)
+            { }
+
+            template <typename T>
+            T as( const T &def = T( ) );
+
+            table_wrap operator [] ( const std::string &path ) const
+            {
+                auto obj = mlua::object_by_path( state, ptr.get( ),
+                                                 path.c_str( ) );
+                return table_wrap( state, obj );
+            }
+
+            bool is_string( ) const
+            {
+                return ptr->type_id( ) == objects::base::TYPE_STRING;
+            }
+
+            bool is_number( ) const
+            {
+                switch (ptr->type_id( )) {
+                case objects::base::TYPE_INTEGER:
+                case objects::base::TYPE_UINTEGER:
+                    return true;
+                default:
+                    break;
+                }
+                return false;
+            }
+
+        };
+
+        template <>
+        std::string table_wrap::as( const std::string &def )
+        {
+            if( ptr && is_string( ) ) {
+                return ptr->str( );
+            }
+            return def;
+        }
+
+        template <>
+        std::uint32_t table_wrap::as( const std::uint32_t &def )
+        {
+            if( ptr && is_number( ) ) {
+                return ptr->inum( );
+            }
+            return def;
+        }
+
         std::uint32_t get_table_value(
                 mlua::state &ls, const std::string &call_name,
                 const mlua::objects::base *table,
@@ -87,66 +153,34 @@ namespace msctl { namespace agent {
 
         }
 
-
-        int get_table_value( mlua::state &ls, const std::string &call_name,
-                             const mlua::objects::base *table,
-                             const char *name, std::string& res )
-        {
-            static auto &log_(gs_application->log( ));
-
-            auto name_obj = mlua::object_by_path( ls.get_state( ),
-                                                  table, name);
-            if( !name_obj ) {
-                LOGERR << "[S] Invalid table; '" << name << "'"
-                          " field doesn't exists; call: " << call_name
-                          ;
-                ls.push(  );
-                ls.push( "Bad value" );
-                return 2;
-            } else {
-                res = name_obj->str( );
-                LOGDBG << "[S] " << call_name << ": Got value '" << res
-                       << "' for the field '" << name << "'";
-            }
-            return 0;
-        }
-
         int lcall_add_device( lua_State *L )
         {
+            static auto &log_(gs_application->log( ));
             mlua::state ls(L);
             auto svc = ls.get_object(  );
             int res = 0;
             if( svc && svc->is_container( ) ) {
                 listener::server_create_info inf;
-                std::string name;
-                std::string ip;
-                std::string mask;
 
-                if( 0 != get_table_value( ls, "device",
-                                          svc.get( ), "name", name ) )
-                {
+                auto name = table_wrap(L, svc)["name"].as<std::string>( );
+                auto ip   = table_wrap(L, svc)["ip"].as<std::string>( );
+                auto mask = table_wrap(L, svc)["mask"].as<std::string>( );;
+
+                if( ip.empty( ) || mask.empty( ) ) {
+                    LOGERR << "Bad device format: " << quote(svc->str( ))
+                           << " ip = " << quote(ip)
+                           << " mask = " << quote(mask)
+                              ;
+                    ls.push( );
+                    ls.push( "Bad device format." );
                     return 2;
                 }
 
-                if( 0 != get_table_value( ls, "device",
-                                          svc.get( ), "mask", mask ) )
-                {
-                    return 2;
-                }
-
-                if( 0 != get_table_value( ls, "device",
-                                          svc.get( ), "ip", ip ) )
-                {
-                    return 2;
-                }
-
+                LOGDBG << "Adding device: " << quote(svc->str( ));
                 common::device_info tun;
-
                 try {
-
                     tun = std::move(common::open_tun( name ));
                     common::setup_device( tun.get( ), name, ip, ip, mask );
-
                 } catch( const std::exception &ex ) {
                     ls.push( );
                     ls.push( std::string( "Failed to add device: " )
@@ -181,7 +215,7 @@ namespace msctl { namespace agent {
 
         int lcall_add_server( lua_State *L )
         {
-            //static auto &log_(gs_application->log( ));
+            static auto &log_(gs_application->log( ));
             mlua::state ls(L);
             auto svc = ls.get_object(  );
             int res = 0;
@@ -189,28 +223,22 @@ namespace msctl { namespace agent {
 
                 listener::server_create_info inf;
 
-                if( 0 != get_table_value( ls, "server",
-                                          svc.get( ), "addr", inf.point ) )
-                {
-                    return 2;
-                }
+                table_wrap tw(L, svc);
 
-                if( 0 != get_table_value( ls, "server",
-                                          svc.get( ), "dev", inf.device ) )
-                {
-                    return 2;
-                }
+                inf.point  = tw["addr"].as<std::string>( );
+                inf.device = tw["dev"].as<std::string>( );
+                auto addr_poll = tw["addr_poll"].as<std::string>( );
 
-                std::string addr_poll;
-                if( 0 != get_table_value( ls, "server",
-                                          svc.get( ), "addr_poll",
-                                          addr_poll ) )
-                {
-                    return 2;
+                if( inf.point.empty( ) || addr_poll.empty( ) ) {
+                    LOGERR << "Bad server format: " << quote(svc->str( ))
+                           << " addr = " << quote(inf.point)
+                           << " addr_poll = " << quote(addr_poll);
+                    ls.push( );
+                    ls.push( "Bad server value." );
+                    return 0;
                 }
 
                 std::vector<std::string> all;
-
                 boost::split( all, addr_poll, boost::is_any_of("/-") );
 
                 if( all.size( ) < 2 ) {
@@ -220,34 +248,27 @@ namespace msctl { namespace agent {
                     return 2;
                 }
 
-                bs::error_code err;
-                auto ip   = ba::ip::address_v4::from_string( all[0], err );
-                if( err ) {
-                    ls.push(  );
-                    ls.push( std::string("Invalid format ")
-                             + all[0]
-                             + std::string( " " )
-                             + err.message( ) );
-                    return 2;
-                }
+                std::vector<ba::ip::address_v4> addrs(all.size( ));
 
-                auto mask = ba::ip::address_v4::from_string( all[1], err );
-                if( err ) {
-                    ls.push(  );
-                    ls.push( std::string("Invalid format ")
-                             + all[1]
-                             + std::string( " " )
-                             + err.message( ) );
-                    return 2;
-                }
-
-                ba::ip::address_v4 last;
-                if( all.size( ) > 2 ) {
-                    last = ba::ip::address_v4::from_string( all[2], err );
+                size_t i = 0;
+                for( auto &s: all ) {
+                    bs::error_code err;
+                    bool failed = false;
+                    addrs[i] = ba::ip::address_v4::from_string( all[0], err );
                     if( err ) {
+                        failed = true;
+                        if (i == (all.size( ) - 1 ) ) {
+                            int bits = atoi( s.c_str( ) );
+                            if( bits >= 8 && bits <= 32 ) {
+                                failed = false;
+                                addrs[i] = utilities::create_mask_v4( bits );
+                            }
+                        }
+                    }
+                    if( failed ) {
                         ls.push(  );
                         ls.push( std::string("Invalid format ")
-                                 + all[2]
+                                 + all[0]
                                  + std::string( " " )
                                  + err.message( ) );
                         return 2;
@@ -255,12 +276,14 @@ namespace msctl { namespace agent {
                 }
 
                 if( all.size( ) > 2 ) {
-                    inf.addr_poll = utilities::address_v4_poll( ip.to_ulong( ),
-                                                            mask.to_ulong( ),
-                                                            last.to_ulong( ) );
+                    inf.addr_poll
+                         = utilities::address_v4_poll( addrs[0].to_ulong( ),
+                                                       addrs[1].to_ulong( ),
+                                                       addrs[2].to_ulong( ) );
                 } else {
-                    inf.addr_poll = utilities::address_v4_poll( ip.to_ulong( ),
-                                                            mask.to_ulong( ) );
+                    inf.addr_poll
+                         = utilities::address_v4_poll( addrs[0].to_ulong( ),
+                                                       addrs[1].to_ulong( ) );
                 }
 
                 ls.push( gs_application->subsys<listener>( )
@@ -276,18 +299,22 @@ namespace msctl { namespace agent {
 
         int lcall_add_logger( lua_State *L )
         {
-            //static auto &log_(gs_application->log( ));
+            static auto &log_(gs_application->log( ));
             mlua::state ls(L);
             auto svc = ls.get_object(  );
             int res = 1;
             if( svc ) {
                 if( svc->is_container( ) ) {
-                    std::string path;
-                    if( 0 != get_table_value( ls, "logger",
-                                              svc.get( ), "path", path ) )
-                    {
+
+                    auto path = table_wrap( L, svc)["path"].as<std::string>( );
+
+                    if( path.empty( ) ) {
+                        LOGERR << "Bad logger format " << svc->str( );
+                        ls.push( false );
+                        ls.push( "Bad logger format. 'path' was not found" );
                         return 2;
                     }
+
                     gs_application->subsys<logging>( ).add_logger_output(path);
                     ls.push( true );
                 } else if( svc->type_id( ) == objects::base::TYPE_STRING ) {
@@ -309,24 +336,27 @@ namespace msctl { namespace agent {
 
         int lcall_add_client( lua_State *L )
         {
-            //static auto &log_(gs_application->log( ));
+            static auto &log_(gs_application->log( ));
 
             mlua::state ls(L);
             auto svc = ls.get_object(  );
             int res = 0;
             if( svc && svc->is_container( ) ) {
                 clients::client_create_info inf;
-                if( 0 != get_table_value( ls, "client",
-                                          svc.get( ), "addr", inf.point ) )
-                {
+
+                inf.point  = table_wrap(L, svc)["addr"].as<std::string>( );
+                inf.device = table_wrap(L, svc)["dev"].as<std::string>( );
+
+                if( inf.point.empty( ) ) {
+                    LOGERR << "Bad client format: " << quote(svc->str( ))
+                           << " addr = " << quote(inf.point)
+                           << " dev = "  << quote(inf.device);
+                    ls.push( );
+                    ls.push( "Bad client format." );
                     return 2;
                 }
 
-                if( 0 != get_table_value( ls, "client",
-                                          svc.get( ), "dev", inf.device ) )
-                {
-                    return 2;
-                }
+                LOGDBG << "Adding new client: " << svc->str( );
 
                 ls.push(gs_application->subsys<clients>( )
                                         .add_client( inf, false ) );
@@ -342,18 +372,24 @@ namespace msctl { namespace agent {
 
         int lcall_set_polls( lua_State *L )
         {
+            static auto &log_(gs_application->log( ));
+
             mlua::state ls(L);
             auto svc = ls.get_object(  );
             if( svc && svc->is_container( ) ) {
 
-                auto ios = get_table_value( ls, "polls", svc.get( ), "io", 1 );
-                auto rpc = get_table_value( ls, "polls", svc.get( ), "rpc", 1 );
+                table_wrap tw(L, svc);
+
+                auto ios = tw["io"].as<std::uint32_t>( );
+                auto rpc = tw["rpc"].as<std::uint32_t>( );
 
                 if( ios < 1 ) ios = 1;
                 if( rpc < 1 ) rpc = 1;
 
                 if( ios > 20 ) ios = 20;
                 if( rpc > 20 ) rpc = 20;
+
+                LOGDBG << "Got polls values: " << svc->str( );
 
                 gs_application->set_io_pools( ios );
                 gs_application->set_rpc_pools( ios );

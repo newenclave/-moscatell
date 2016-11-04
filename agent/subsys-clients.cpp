@@ -374,8 +374,10 @@ namespace {
                     ba::ip::address_v4 daddr(ndaddr);
                     ba::ip::address_v4 mask(nmask);
 
-                    LOGINF << "Got address: " << quote(saddr.to_string( ))
-                           << ", " << daddr.to_string( )
+                    LOGINF << "Got address: "
+                           << quote(saddr.to_string( )
+                                    + "->"
+                                    + daddr.to_string( ))
                            << " and mask: " << quote(mask.to_string( ));
 
                     auto hdl = keeper.dev->get_stream( ).native_handle( );

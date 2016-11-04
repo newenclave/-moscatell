@@ -6,7 +6,7 @@ set( exe_name ${PROJECT_NAME}_agent )
 add_executable(${exe_name} ${src_dir})
 
 list(APPEND dependencies
-    ${PROJECT_NAME}_common_s
+    ${PROJECT_NAME}_common
     ${PROJECT_NAME}_protocol
     VTRC_SERVER
     VTRC_CLIENT

@@ -71,6 +71,8 @@ namespace msctl { namespace agent {
         std::uint32_t                                io_pools_  = 1;
         std::uint32_t                                rpc_pools_ = 1;
 
+        std::string                                  name_;
+
     public:
 
         application( vtrc::common::pool_pair &pp );
@@ -152,6 +154,15 @@ namespace msctl { namespace agent {
             return logger_;
         }
 
+        const std::string &name( ) const
+        {
+            return name_;
+        }
+
+        void set_name( const std::string &val )
+        {
+            name_ = val;
+        }
 
         std::uint32_t io_pools( ) const { return io_pools_; }
         void set_io_pools( std::uint32_t val ) { io_pools_ = val; }
