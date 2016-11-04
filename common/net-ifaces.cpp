@@ -37,8 +37,8 @@ namespace {
         auto si = reinterpret_cast<const sockaddr_in6 *>(sa);
         bai::address_v6::bytes_type bytes;
         std::copy( &si->sin6_addr.s6_addr[0],
-                &si->sin6_addr.s6_addr[bytes.max_size( )],
-                bytes.begin( ) );
+                   &si->sin6_addr.s6_addr[bytes.max_size( )],
+                   bytes.begin( ) );
         return bai::address_v6( bytes );
     }
 
@@ -272,6 +272,54 @@ namespace {
     {
         o << info.name( )  << " " << info.addr( ) << "/" << info.mask( );
         return o;
+    }
+
+    namespace {
+
+        static const std::uint8_t mask_value[ ] = {
+            0x00,
+            0x80, 0xC0, 0xE0, 0xF0,
+            0xF8, 0xFC, 0xFE, 0xFF,
+        };
+
+    }
+
+    bai::address_v6 create_mask_v6( std::uint32_t bits )
+    {
+        if( bits > 128 ) {
+            return bai::address_v6( );
+        }
+
+        bai::address_v6::bytes_type bytes { 0, 0, 0, 0, 0, 0, 0, 0 };
+        for( std::uint32_t i=0; (i < bytes.max_size( )) && (0 != bits); i++ ) {
+            if( bits >= 8 ) {
+                bytes[i] = 0xFF;
+                bits    -= 8;
+            } else {
+                bytes[i] = mask_value[bits];
+                bits     = 0;
+            }
+        }
+        bai::address_v6 res( bytes );
+        return std::move( res );
+    }
+
+    bai::address_v4 create_mask_v4( std::uint32_t bits )
+    {
+        if( bits > 32 ) {
+            return bai::address_v4( );
+        }
+        std::uint32_t res = 0;
+        for( std::uint32_t i = 4; (i > 0) && (0 !=bits); i-- ) {
+            if( bits >= 8 ) {
+                res = res | (0xFF << ((i - 1) * 8));
+                bits -= 8;
+            } else {
+                res = res | (mask_value[bits] << ((i - 1) * 8));
+                bits  = 0;
+            }
+        }
+        return bai::address_v4(res);
     }
 
 }

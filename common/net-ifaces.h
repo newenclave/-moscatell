@@ -71,6 +71,9 @@ namespace utilities {
     iface_info_list get_system_ifaces( );
     std::ostream & operator << ( std::ostream &o, const iface_info &info );
 
+    boost::asio::ip::address_v6 create_mask_v6( std::uint32_t bits );
+    boost::asio::ip::address_v4 create_mask_v4( std::uint32_t bits );
+
 }
 
 
