@@ -18,7 +18,8 @@
 #include "boost/asio/ip/address.hpp"
 
 #define TAP_CONTROL_CODE(request, method) \
-    CTL_CODE(FILE_DEVICE_UNKNOWN, request, method, FILE_ANY_ACCESS)
+        CTL_CODE(FILE_DEVICE_UNKNOWN, request, method, FILE_ANY_ACCESS)
+
 #define TAP_IOCTL_CONFIG_TUN       TAP_CONTROL_CODE(10, METHOD_BUFFERED)
 #define TAP_IOCTL_SET_MEDIA_STATUS TAP_CONTROL_CODE( 6, METHOD_BUFFERED)
 
@@ -28,7 +29,7 @@
         _T("\\Class\\{4D36E972-E325-11CE-BFC1-08002BE10318}")
 
 #define NETWORK_KEY REGISTRY_CONTROL_PATH \
-    _T("\\Network\\{4D36E972-E325-11CE-BFC1-08002BE10318}")
+         _T("\\Network\\{4D36E972-E325-11CE-BFC1-08002BE10318}")
 
 #define TAP_DEVICE_SPACE     _T("\\\\.\\Global\\")
 #define TAP_VERSION_ID_0801  _T("tap0801")
@@ -41,8 +42,8 @@ namespace msctl { namespace common {
 
 namespace {
 
-using tstring = std::basic_string<TCHAR, std::char_traits<TCHAR>,
-                                         std::allocator<TCHAR> >;
+    using tstring = std::basic_string<TCHAR, std::char_traits<TCHAR>,
+                                             std::allocator<TCHAR> >;
 
     using charset = utilities::charset;
 

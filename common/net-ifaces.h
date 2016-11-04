@@ -56,12 +56,12 @@ namespace utilities {
 
         v4_type v4( )
         {
-            return sockaddr_.to_v4( );
+            return std::move(sockaddr_.to_v4( ));
         }
 
         v6_type v6( )
         {
-            return sockaddr_.to_v6( );
+            return std::move(sockaddr_.to_v6( ));
         }
 
         bool check( const address_type &test ) const;
