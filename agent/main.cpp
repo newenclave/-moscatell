@@ -14,6 +14,7 @@
 
 #include "common/moscatell-lua.h"
 #include "common/cmd-iface.h"
+#include "common/net-ifaces.h"
 
 #include "boost/program_options.hpp"
 
