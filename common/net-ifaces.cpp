@@ -82,10 +82,10 @@ namespace {
         while( res == ERROR_BUFFER_OVERFLOW ) {
             tmp_data.resize( size + 1 );
             OSVERSIONINFO ovx = { 0 };
-            ovx.dwOSVersionInfoSize = sizeof( ovx );
-            GetVersionEx( (LPOSVERSIONINFO)&ovx );
             utilities::fill_native_version( &ovx );
+
             // PIP_ADAPTER_ADDRESSES_LH if os version major >= 6
+
             auto p = reinterpret_cast<PIP_ADAPTER_ADDRESSES>(&tmp_data[0]);
             res = GetAdaptersAddresses( family, flags, NULL,
                                         (PIP_ADAPTER_ADDRESSES)p, &size );
