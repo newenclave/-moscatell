@@ -70,13 +70,16 @@ namespace msctl { namespace agent {
 
         struct table_wrap {
 
-            lua_State                *state;
-            const objects::base_sptr  ptr;
+            lua_State          *state;
+            objects::base_sptr  ptr;
 
             table_wrap( lua_State *s, const objects::base *p )
                 :state(s)
-                ,ptr(p->clone( ))
-            { }
+            {
+                if( p ) {
+                    ptr.reset(p->clone( ));
+                }
+            }
 
             table_wrap( lua_State *s, objects::base_sptr p )
                 :state(s)
@@ -130,29 +133,6 @@ namespace msctl { namespace agent {
             return def;
         }
 
-        std::uint32_t get_table_value(
-                mlua::state &ls, const std::string &call_name,
-                const mlua::objects::base *table,
-                const char *name, std::uint32_t def )
-        {
-            static auto &log_(gs_application->log( ));
-
-            auto name_obj = mlua::object_by_path( ls.get_state( ),
-                                                  table, name);
-            if( !name_obj ) {
-                LOGERR << "[S] Invalid table; '" << name << "'"
-                          " field doesn't exists; call: " << call_name
-                          ;
-                return def;
-            } else {
-                LOGDBG << "[S] " << call_name << ": Got value '"
-                       << name_obj->str( )
-                       << "' for the field '" << name << "'";
-                return name_obj->inum( );
-            }
-
-        }
-
         int lcall_add_device( lua_State *L )
         {
             static auto &log_(gs_application->log( ));
@@ -162,9 +142,11 @@ namespace msctl { namespace agent {
             if( svc && svc->is_container( ) ) {
                 listener::server_create_info inf;
 
-                auto name = table_wrap(L, svc)["name"].as<std::string>( );
-                auto ip   = table_wrap(L, svc)["ip"].as<std::string>( );
-                auto mask = table_wrap(L, svc)["mask"].as<std::string>( );;
+                table_wrap tw(L, svc);
+
+                auto name = tw["name"].as<std::string>( );
+                auto ip   = tw["ip"].as<std::string>( );
+                auto mask = tw["mask"].as<std::string>( );;
 
                 if( ip.empty( ) || mask.empty( ) ) {
                     LOGERR << "Bad device format: " << quote(svc->str( ))
@@ -344,8 +326,10 @@ namespace msctl { namespace agent {
             if( svc && svc->is_container( ) ) {
                 clients::client_create_info inf;
 
-                inf.point  = table_wrap(L, svc)["addr"].as<std::string>( );
-                inf.device = table_wrap(L, svc)["dev"].as<std::string>( );
+                table_wrap tw(L, svc);
+
+                inf.point  = tw["addr"].as<std::string>( );
+                inf.device = tw["dev"].as<std::string>( );
 
                 if( inf.point.empty( ) ) {
                     LOGERR << "Bad client format: " << quote(svc->str( ))
