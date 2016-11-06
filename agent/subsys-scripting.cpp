@@ -221,7 +221,7 @@ namespace msctl { namespace agent {
                 }
 
                 std::vector<std::string> all;
-                boost::split( all, addr_poll, boost::is_any_of("/-") );
+                boost::split( all, addr_poll, boost::is_any_of("/- \t\r\n") );
 
                 if( all.size( ) < 2 ) {
                     ls.push(  );
@@ -230,13 +230,19 @@ namespace msctl { namespace agent {
                     return 2;
                 }
 
-                std::vector<ba::ip::address_v4> addrs(all.size( ));
+                std::vector<ba::ip::address_v4> addrs;
+                addrs.reserve( all.size( ) );
 
                 size_t i = 0;
                 for( auto &s: all ) {
+
+                    if( s.empty( ) ) {
+                        continue;
+                    }
+
                     bs::error_code err;
                     bool failed = false;
-                    addrs[i] = ba::ip::address_v4::from_string( all[0], err );
+                    auto next = ba::ip::address_v4::from_string( s, err );
                     if( err ) {
                         failed = true;
                         if (i == (all.size( ) - 1 ) ) {
@@ -254,6 +260,9 @@ namespace msctl { namespace agent {
                                  + std::string( " " )
                                  + err.message( ) );
                         return 2;
+                    } else {
+                        addrs.emplace_back( std::move( next ) );
+                        ++i;
                     }
                 }
 
