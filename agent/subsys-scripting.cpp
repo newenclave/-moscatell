@@ -437,10 +437,12 @@ namespace msctl { namespace agent {
             auto res = state_.load_file( path.c_str( ) );
             if( 0 != res ) {
                 auto error =  state_.pop_error( );
-                LOGERR << "Failed to load file '"
-                       << path << "'; " << error
-                       ;
-                return;
+                std::ostringstream oss;
+                oss << "Failed to load file '"
+                    << path << "'; " << error<< std::endl;
+                    ;
+                std::cerr << oss.str( );
+                throw std::runtime_error( oss.str( ) );
             }
         }
     };
