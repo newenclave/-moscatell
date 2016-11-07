@@ -274,6 +274,16 @@ namespace {
         device_up( name );
     }
 
+//    void setup_device( native_handle device,
+//                       std::uint32_t name,
+//                       std::uint32_t ip,
+//                       std::uint32_t otherip,
+//                       std::uint32_t mask )
+//    {
+
+//    }
+
+
 }}
 
 #endif

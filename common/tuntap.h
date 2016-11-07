@@ -122,6 +122,12 @@ namespace msctl { namespace common {
                        const std::string &otherip,
                        const std::string &mask );
 
+//    void setup_device( native_handle device,
+//                       std::uint32_t name,
+//                       std::uint32_t ip,
+//                       std::uint32_t otherip,
+//                       std::uint32_t mask );
+
     src_dest_v4 iface_v4_addr( const std::string &device );
 
 }}
