@@ -86,9 +86,6 @@ namespace msctl { namespace agent {
                 ,ptr(p)
             { }
 
-            template <typename T>
-            T as( const T &def = T( ) );
-
             table_wrap operator [] ( const std::string &path ) const
             {
                 auto obj = mlua::object_by_path( state, ptr.get( ),
@@ -99,6 +96,12 @@ namespace msctl { namespace agent {
             bool is_string( ) const
             {
                 return ptr->type_id( ) == objects::base::TYPE_STRING;
+            }
+
+            bool is_bool( ) const
+            {
+                return is_number( )
+                    || ptr->type_id( ) == objects::base::TYPE_BOOL;
             }
 
             bool is_number( ) const
@@ -113,25 +116,31 @@ namespace msctl { namespace agent {
                 return false;
             }
 
+            std::string as_string( const std::string &def = std::string( ) )
+            {
+                if( ptr && is_string( ) ) {
+                    return ptr->str( );
+                }
+                return def;
+            }
+
+            std::uint32_t as_uint32( std::uint32_t def = 0 )
+            {
+                if( ptr && is_number( ) ) {
+                    return ptr->inum( );
+                }
+                return def;
+            }
+
+            bool as_bool( bool def = false )
+            {
+                if( ptr && is_bool( ) ) {
+                    return !!ptr->inum( );
+                }
+                return def;
+            }
+
         };
-
-        template <>
-        std::string table_wrap::as( const std::string &def )
-        {
-            if( ptr && is_string( ) ) {
-                return ptr->str( );
-            }
-            return def;
-        }
-
-        template <>
-        std::uint32_t table_wrap::as( const std::uint32_t &def )
-        {
-            if( ptr && is_number( ) ) {
-                return ptr->inum( );
-            }
-            return def;
-        }
 
         int lcall_add_device( lua_State *L )
         {
@@ -144,9 +153,9 @@ namespace msctl { namespace agent {
 
                 table_wrap tw(L, svc);
 
-                auto name = tw["name"].as<std::string>( );
-                auto ip   = tw["ip"].as<std::string>( );
-                auto mask = tw["mask"].as<std::string>( );;
+                auto name = tw["name"].as_string( );
+                auto ip   = tw["ip"].as_string( );
+                auto mask = tw["mask"].as_string( );;
 
                 if( ip.empty( ) || mask.empty( ) ) {
                     LOGERR << "Bad device format: " << quote(svc->str( ))
@@ -207,9 +216,9 @@ namespace msctl { namespace agent {
 
                 table_wrap tw(L, svc);
 
-                inf.point  = tw["addr"].as<std::string>( );
-                inf.device = tw["dev"].as<std::string>( );
-                auto addr_poll = tw["addr_poll"].as<std::string>( );
+                inf.point       = tw["addr"].as_string( );
+                inf.device      = tw["dev"].as_string( );
+                auto addr_poll  = tw["addr_poll"].as_string( );
 
                 if( inf.point.empty( ) || addr_poll.empty( ) ) {
                     LOGERR << "Bad server format: " << quote(svc->str( ))
@@ -297,7 +306,7 @@ namespace msctl { namespace agent {
             if( svc ) {
                 if( svc->is_container( ) ) {
 
-                    auto path = table_wrap( L, svc)["path"].as<std::string>( );
+                    auto path = table_wrap( L, svc)["path"].as_string( );
 
                     if( path.empty( ) ) {
                         LOGERR << "Bad logger format " << svc->str( );
@@ -337,8 +346,8 @@ namespace msctl { namespace agent {
 
                 table_wrap tw(L, svc);
 
-                inf.point  = tw["addr"].as<std::string>( );
-                inf.device = tw["dev"].as<std::string>( );
+                inf.point  = tw["addr"].as_string( );
+                inf.device = tw["dev"].as_string( );
 
                 if( inf.point.empty( ) ) {
                     LOGERR << "Bad client format: " << quote(svc->str( ))
@@ -373,8 +382,8 @@ namespace msctl { namespace agent {
 
                 table_wrap tw(L, svc);
 
-                auto ios = tw["io"].as<std::uint32_t>( );
-                auto rpc = tw["rpc"].as<std::uint32_t>( );
+                auto ios = tw["io"].as_uint32( );
+                auto rpc = tw["rpc"].as_uint32( );
 
                 if( ios < 1 ) ios = 1;
                 if( rpc < 1 ) rpc = 1;
