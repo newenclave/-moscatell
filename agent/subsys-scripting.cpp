@@ -410,8 +410,8 @@ namespace msctl { namespace agent {
             tab.add( "client", new_function( &lcall_add_client ) );
             tab.add( "logger", new_function( &lcall_add_logger ) );
             tab.add( "polls",  new_function( &lcall_set_polls  ) );
-            tab.add( "mkdev",  new_function( &lcall_add_device  ) );
-            tab.add( "rmdev",  new_function( &lcall_del_device  ) );
+            tab.add( "mkdev",  new_function( &lcall_add_device ) );
+            tab.add( "rmdev",  new_function( &lcall_del_device ) );
 
             ls.set_object( "msctl", &tab );
 

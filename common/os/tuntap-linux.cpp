@@ -253,11 +253,20 @@ namespace {
             throw_errno( "ioctl(SIOCSIFADDR)" );
         }
 
+#if 1
+        auto dst_net = ba::ip::address_v4(
+              ba::ip::address_v4::from_string( ip ).to_ulong( ) &
+              ba::ip::address_v4::from_string( mask ).to_ulong( ) );
+        res = setip_v4_dst_addr( name.c_str( ), dst_net.to_string( ).c_str( ) );
+        if( res < 0 ) {
+            throw_errno( "ioctl(SIOCSIFDSTADDR)" );
+        }
+#else
         res = setip_v4_dst_addr( name.c_str( ), otherip.c_str( ) );
         if( res < 0 ) {
             throw_errno( "ioctl(SIOCSIFDSTADDR)" );
         }
-
+#endif
         res = setip_v4_mask( name.c_str( ), mask.c_str( ) );
         if( res < 0 ) {
             throw_errno( "ioctl(SIOCSIFNETMASK)" );
