@@ -521,7 +521,8 @@ namespace {
             if( inf.is_local( ) ) {
                 res = local::create( *app_, inf.addpess );
             } else if( inf.is_ip( ) ) {
-                res = tcp::create( *app_, inf.addpess, inf.service, true );
+                res = tcp::create( *app_, inf.addpess, inf.service,
+                                   serv_info.tcp_nowait );
             } else {
                 LOGERR << "Failed to add endpoint '"
                        << point << "'; Bad format";

@@ -27,6 +27,7 @@ namespace msctl { namespace agent {
             std::string                point;
             std::string                device;
             utilities::address_v4_poll addr_poll;
+            bool                       tcp_nowait;
         };
 
         listener( application *app );

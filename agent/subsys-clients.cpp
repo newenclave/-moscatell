@@ -53,6 +53,7 @@ namespace {
         utilities::endpoint_info  info;
         delayed_call              timer;
         bool                      active = true;
+        bool                      no_wait = true;
 
         using error_code = VTRC_SYSTEM::error_code;
 
@@ -100,7 +101,7 @@ namespace {
                 client->async_connect( info.addpess, callback);
             } else if( info.is_ip( ) ) {
                 client->async_connect( info.addpess, info.service,
-                                       callback, true );
+                                       callback, no_wait );
             }
         }
 
@@ -508,8 +509,9 @@ namespace {
             bool failed = inf.is_none( );
 
             if( !failed ) {
-                clnt->info   = inf;
-                clnt->device = dev;
+                clnt->info    = inf;
+                clnt->device  = dev;
+                clnt->no_wait = add_info.tcp_nowait;
                 if( auto_start ) {
                     clnt->start_connect( );
                 }

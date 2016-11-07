@@ -219,6 +219,7 @@ namespace msctl { namespace agent {
                 inf.point       = tw["addr"].as_string( );
                 inf.device      = tw["dev"].as_string( );
                 auto addr_poll  = tw["addr_poll"].as_string( );
+                inf.tcp_nowait  = tw["tcp_nowait"].as_bool( true );
 
                 if( inf.point.empty( ) || addr_poll.empty( ) ) {
                     LOGERR << "Bad server format: " << quote(svc->str( ))
@@ -346,8 +347,9 @@ namespace msctl { namespace agent {
 
                 table_wrap tw(L, svc);
 
-                inf.point  = tw["addr"].as_string( );
-                inf.device = tw["dev"].as_string( );
+                inf.point      = tw["addr"].as_string( );
+                inf.device     = tw["dev"].as_string( );
+                inf.tcp_nowait = tw["tcp_nowait"].as_bool( true );
 
                 if( inf.point.empty( ) ) {
                     LOGERR << "Bad client format: " << quote(svc->str( ))
