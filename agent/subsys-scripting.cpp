@@ -586,10 +586,16 @@ namespace msctl { namespace agent {
             }
         }
 
-        void on_client_disconnect( vtrc::client::base_sptr,
+        void on_client_disconnect( vtrc::client::base_sptr c,
                                    const clients::client_create_info &inf )
         {
+            using objects::new_string;
+            using objects::new_integer;
             objects::table res;
+            auto id = reinterpret_cast<std::uint64_t>(c.get( ));
+
+            res.add( "client_id", new_integer( id ) );
+
             call_event( "on_disconnect", inf.params, res );
         }
 
@@ -598,14 +604,23 @@ namespace msctl { namespace agent {
                                  const clients::register_info &reg )
         {
             using objects::new_string;
+            using objects::new_integer;
+            using objects::new_table;
 
             objects::table res;
 
-            res.add( "client",   new_string( c->connection( )->name( ) ) );
-            res.add( "addr",     new_string( reg.iface_addr ) );
-            res.add( "mask",     new_string( reg.net_mask ) );
-            res.add( "dst_addr", new_string( reg.remote_addr ) );
-            res.add( "device",   new_string( reg.device_name ) );
+            auto id   = reinterpret_cast<std::uint64_t>(c.get( ));
+            auto name = c->connection( )->name( );
+
+            res.add( "client", new_table( )
+                     ->add( "name", new_string( name ) )
+                     ->add( "prt",  new_integer( id ) )
+                    );
+
+            res.add( "addr",      new_string( reg.iface_addr ) );
+            res.add( "mask",      new_string( reg.net_mask ) );
+            res.add( "dst_addr",  new_string( reg.remote_addr ) );
+            res.add( "device",    new_string( reg.device_name ) );
 
             call_event( "on_register", inf.params, res );
         }
