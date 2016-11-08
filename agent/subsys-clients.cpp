@@ -390,6 +390,7 @@ namespace {
                     reginfo.iface_addr  = saddr.to_string( );
                     reginfo.remote_addr = daddr.to_string( );
                     reginfo.net_mask    = mask.to_string( );
+                    reginfo.device_name = dev;
 
                     common::setup_device( hdl, dev,
                                           reginfo.iface_addr,

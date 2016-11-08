@@ -38,7 +38,7 @@ namespace msctl { namespace agent {
         using utilities::decorators::quote;
         using param_map = std::map<std::string, utilities::parameter_sptr>;
 
-        int lcall_log_print( lua_State *L )
+        int lcall_log_print_all( lua_State *L, logger_impl::level lvl )
         {
             static auto &log_(gs_application->log( ));
 
@@ -54,9 +54,14 @@ namespace msctl { namespace agent {
                 oss << o->str( ) << ( i != n ? "\t": "" );
             }
 
-            LOGDBG << oss.str( );
+            LOG(lvl) << oss.str( );
 
             return 0;
+        }
+
+        int lcall_log_print( lua_State *L )
+        {
+            return lcall_log_print_all( L, logger_impl::level::debug );
         }
 
         int lcall_system( lua_State *L )
@@ -459,7 +464,8 @@ namespace msctl { namespace agent {
 
         int lcall_net_ifaces( lua_State *L )
         {
-            static auto &log_(gs_application->log( ));
+//            static auto &log_(gs_application->log( ));
+
             using objects::new_string;
             using objects::new_boolean;
             using objects::new_integer;
@@ -595,10 +601,11 @@ namespace msctl { namespace agent {
 
             objects::table res;
 
-            res.add( "client", new_string( c->connection( )->name( ) ) );
-            res.add( "saddr",  new_string( reg.iface_addr ) );
-            res.add( "daddr",  new_string( reg.remote_addr ) );
-            res.add( "mask",   new_string( reg.net_mask ) );
+            res.add( "client",   new_string( c->connection( )->name( ) ) );
+            res.add( "addr",     new_string( reg.iface_addr ) );
+            res.add( "mask",     new_string( reg.net_mask ) );
+            res.add( "dst_addr", new_string( reg.remote_addr ) );
+            res.add( "device",   new_string( reg.device_name ) );
 
             call_event( "on_register", inf.params, res );
         }

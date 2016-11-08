@@ -32,6 +32,7 @@ namespace msctl { namespace agent {
             std::string  iface_addr;
             std::string  remote_addr;
             std::string  net_mask;
+            std::string  device_name;
         };
 
         VTRC_DECLARE_SIGNAL( on_client_ready,
