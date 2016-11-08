@@ -15,14 +15,6 @@ namespace msctl { namespace agent {
         friend struct   impl;
         impl           *impl_;
 
-        VTRC_DECLARE_SIGNAL( on_new_connection,
-                             void ( vtrc::common::connection_iface *,
-                                    const std::string & ) );
-
-        VTRC_DECLARE_SIGNAL( on_stop_connection,
-                             void ( vtrc::common::connection_iface * ));
-
-
     public:
 
         using listener_param_sptr = utilities::parameter_sptr;
@@ -35,6 +27,27 @@ namespace msctl { namespace agent {
             bool                       tcp_nowait;
             listener_param_map         params;
         };
+
+        struct register_info {
+            std::string ip;
+            std::string mask;
+            std::string my_ip;
+        };
+
+        VTRC_DECLARE_SIGNAL( on_new_connection,
+                             void ( vtrc::common::connection_iface *,
+                                    const server_create_info & ) );
+
+        VTRC_DECLARE_SIGNAL( on_reg_connection,
+                             void ( vtrc::common::connection_iface *,
+                                    const listener::server_create_info &,
+                                    const register_info & ) );
+
+        VTRC_DECLARE_SIGNAL( on_stop_connection,
+                             void ( vtrc::common::connection_iface * ));
+
+
+    public:
 
         listener( application *app );
         static std::shared_ptr<listener> create( application *app );

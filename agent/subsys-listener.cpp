@@ -1,4 +1,5 @@
 #include <mutex>
+#include <functional>
 
 #include "subsys-listener.h"
 
@@ -91,18 +92,29 @@ namespace {
         ba::ip::address addr_;
         ba::ip::address mask_;
 
-    public:
+        std::shared_ptr<listener::server_create_info> create_inf_;
+
+        public:
 
         using route_map = std::map<ba::ip::address, server_wrapper>;
         using parent_type = common::tuntap_transport;
         using empty_callback = std::function<void ()>;
 
+        using register_callback =
+                std::function<void (vcomm::connection_iface *,
+                                    const listener::server_create_info &,
+                                    const listener::register_info &)>;
+
         using route_table = std::map<std::uint32_t, server_wrapper_sptr>;
 
+
+        register_callback on_client_register;
+
         server_transport( ba::io_service &ios,
-                          const utilities::address_v4_poll &poll )
+                          std::shared_ptr<listener::server_create_info> inf )
             :parent_type(ios, 2048, parent_type::OPT_DISPATCH_READ)
-            ,poll_(poll)
+            ,poll_(inf->addr_poll)
+            ,create_inf_(inf)
         { }
 
         void on_read( const char *data, size_t length ) override
@@ -189,11 +201,19 @@ namespace {
             LOGINF << "Set client address: " << str_addr.to_string( )
                    << " with mask " << str_mask.to_string( );
 
-            auto my_addr = addr_.to_v4( ).to_ulong( );
+            auto my_addr = htonl(addr_.to_v4( ).to_ulong( ));
             res->mutable_iface_addr( )->set_v4_saddr( htonl(next_addr) );
             res->mutable_iface_addr( )->set_v4_daddr( my_addr );
 
             res->mutable_iface_addr( )->set_v4_mask( next_mask );
+
+            listener::register_info rinfo;
+            rinfo.my_ip = addr_.to_string( );
+            rinfo.ip    = str_addr.to_string( );
+            rinfo.mask  = str_mask.to_string( );
+
+            on_client_register( clntptr.get( ), *create_inf_, rinfo );
+
             cb( );
         }
 
@@ -233,21 +253,21 @@ namespace {
 
         static
         shared_type create( application *app,
-                            const listener::server_create_info &inf )
+                            std::shared_ptr<listener::server_create_info> inf )
         {
             auto &log_(*gs_logger);
 
             using std::make_shared;
-            auto dev  = common::open_tun( inf.device );
+            auto dev  = common::open_tun( inf->device );
             auto inst = make_shared<server_transport>
-                                ( app->get_io_service( ), inf.addr_poll );
+                                ( app->get_io_service( ), inf );
 
-            auto addr_mask = common::iface_v4_addr( inf.device );
+            auto addr_mask = common::iface_v4_addr( inf->device );
 
-            inst->addr_ = ba::ip::address_v4( addr_mask.first );
-            inst->mask_ = ba::ip::address_v4( addr_mask.second );
+            inst->addr_ = ba::ip::address_v4( htonl(addr_mask.first ) );
+            inst->mask_ = ba::ip::address_v4( htonl(addr_mask.second) );
 
-            LOGINF << "Got ip for " << quote( inf.device )
+            LOGINF << "Got ip for " << quote( inf->device )
                    << " " << quote( inst->addr_.to_string( ) )
                    << " mask " << quote( inst->mask_.to_string( ) )
                       ;
@@ -424,6 +444,8 @@ namespace {
         device_map          devices_;
         vtrc::shared_mutex  remote_lock_;
 
+        using server_create_info = listener::server_create_info;
+
         impl( logger_impl &log )
             :log_(log)
         {
@@ -431,11 +453,11 @@ namespace {
         }
 
         void add_server_point( vcomm::connection_iface *c,
-                               const listener::server_create_info &dev )
+                               std::shared_ptr<server_create_info> dev )
         {
             auto id = reinterpret_cast<std::uintptr_t>(c);
             vtrc::upgradable_lock lck(remote_lock_);
-            auto f  =  devices_.find( dev.device );
+            auto f  =  devices_.find( dev->device );
             device_info_sptr info;
             if( f != devices_.end( ) ) {
                 /// ok there is one device
@@ -448,14 +470,24 @@ namespace {
 
                 /// ok there is no device
                 info = std::make_shared<device_info>( );
-                info->name      = dev.device;
+                info->name      = dev->device;
                 info->transport = server_transport::create( app_, dev );
+
                 if( info->transport ) {
 
+                    auto reg_callback =
+                            [this]( vtrc::common::connection_iface *clnt,
+                                    const listener::server_create_info &cinf,
+                                    const listener::register_info &rinf)
+                    {
+                        parent_->get_on_reg_connection( )( clnt, cinf, rinf );
+                    };
+
+                    info->transport->on_client_register = reg_callback;
                     info->transport->start_read( );
 
                     vtrc::upgrade_to_unique ulck(lck);
-                    devices_[dev.device] = remote_[id] = info;
+                    devices_[dev->device] = remote_[id] = info;
 
                 } else {
                     LOGERR << "Failed to open device: " << errno;
@@ -488,38 +520,38 @@ namespace {
         }
 
         void on_accept_failed( const VTRC_SYSTEM::error_code &err,
-                               const listener::server_create_info &inf )
+                               std::shared_ptr<server_create_info> inf )
         {
-            LOGERR << "Accept failed on listener: " << quote(inf.point)
-                   << " assigned to device " << quote(inf.device) << "; "
+            LOGERR << "Accept failed on listener: " << quote(inf->point)
+                   << " assigned to device " << quote(inf->device) << "; "
                    << "Error: " << err.value( )
                    << " (" << err.message( ) << ")"
                       ;
         }
 
         void on_new_connection( vcomm::connection_iface *c,
-                                const listener::server_create_info &dev )
+                                std::shared_ptr<server_create_info> inf )
         {
             LOGINF << "Add connection: " << quote(c->name( ))
-                   << " for device " << quote(dev.device);
-            add_server_point( c, dev );
-            parent_->get_on_new_connection( )( c, dev.device );
+                   << " for device " << quote(inf->device);
+            add_server_point( c, inf );
+            parent_->get_on_new_connection( )( c, *inf );
         }
 
         void on_stop_connection( vcomm::connection_iface *c,
-                                 const listener::server_create_info & /*dev*/ )
+                                 std::shared_ptr<server_create_info> /*inf*/ )
         {
             LOGINF << "Remove connection: " << quote(c->name( ));
             del_server_point( c );
             parent_->get_on_stop_connection( )( c );
         }
 
-        bool add( const listener::server_create_info &serv_info, bool s )
+        bool add( const listener::server_create_info &srv_info, bool s )
         {
             using namespace vserv::listeners;
 
-            auto &point(serv_info.point);
-            auto &dev(serv_info.device);
+            auto &point(srv_info.point);
+            auto &dev(srv_info.device);
 
             auto inf = utilities::get_endpoint_info( point );
             vserv::listener_sptr res;
@@ -528,7 +560,7 @@ namespace {
                 res = local::create( *app_, inf.addpess );
             } else if( inf.is_ip( ) ) {
                 res = tcp::create( *app_, inf.addpess, inf.service,
-                                   serv_info.tcp_nowait );
+                                   srv_info.tcp_nowait );
             } else {
                 LOGERR << "Failed to add endpoint '"
                        << point << "'; Bad format";
@@ -540,28 +572,30 @@ namespace {
                        << " for device " << quote(dev);
 
                 res->on_start_connect(
-                    [this, serv_info](  ) {
-                        this->on_start( serv_info );
+                    [this, srv_info](  ) {
+                        this->on_start( srv_info );
                     } );
 
                 res->on_stop_connect (
-                    [this, serv_info](  ) {
-                        this->on_stop( serv_info );
+                    [this, srv_info](  ) {
+                        this->on_stop( srv_info );
                     } );
 
+                auto info_ptr = std::make_shared<server_create_info>( srv_info);
+
                 res->on_accept_failed_connect(
-                    [this, serv_info]( const VTRC_SYSTEM::error_code &err ) {
-                        this->on_accept_failed( err, serv_info );
+                    [this, info_ptr]( const VTRC_SYSTEM::error_code &err ) {
+                        this->on_accept_failed( err, info_ptr );
                     } );
 
                 res->on_new_connection_connect(
-                    [this, serv_info]( vcomm::connection_iface *c ) {
-                        this->on_new_connection( c, serv_info );
+                    [this, info_ptr]( vcomm::connection_iface *c ) {
+                        this->on_new_connection( c, info_ptr );
                     } );
 
                 res->on_stop_connection_connect(
-                    [this, serv_info]( vcomm::connection_iface *c ) {
-                        this->on_stop_connection( c, serv_info );
+                    [this, info_ptr]( vcomm::connection_iface *c ) {
+                        this->on_stop_connection( c, info_ptr );
                     } );
 
                 if( s ) {
@@ -569,7 +603,7 @@ namespace {
                 }
 
                 std::lock_guard<std::mutex> lck(points_lock_);
-                points_[point] = listener_info( res, serv_info );
+                points_[point] = listener_info( res, srv_info );
                 return true;
             }
 
