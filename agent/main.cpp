@@ -276,6 +276,8 @@ int main( int argc, const char **argv )
 
         pp.join_all( );
 
+        logger.drop_all( );
+
     } catch( const std::exception &ex ) {
         std::cerr << "'main' error: " << ex.what( ) << std::endl;
         return 1;
