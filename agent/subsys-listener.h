@@ -5,6 +5,8 @@
 #include "application.h"
 #include "vtrc-common/vtrc-signal-declaration.h"
 
+#include "common/parameter.h"
+
 namespace msctl { namespace agent {
 
     class listener: public common::subsys_iface {
@@ -23,11 +25,15 @@ namespace msctl { namespace agent {
 
     public:
 
+        using listener_param_sptr = utilities::parameter_sptr;
+        using listener_param_map  = std::map<std::string, listener_param_sptr>;
+
         struct server_create_info {
             std::string                point;
             std::string                device;
             utilities::address_v4_poll addr_poll;
             bool                       tcp_nowait;
+            listener_param_map         params;
         };
 
         listener( application *app );

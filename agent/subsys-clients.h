@@ -6,6 +6,8 @@
 #include "vtrc-common/vtrc-signal-declaration.h"
 #include "vtrc-client/vtrc-client-base.h"
 
+#include "common/parameter.h"
+
 namespace msctl { namespace agent {
 
     class clients: public common::subsys_iface {
@@ -13,21 +15,27 @@ namespace msctl { namespace agent {
         struct          impl;
         friend struct   impl;
         impl           *impl_;
+    public:
+
+        using client_param_sptr = utilities::parameter_sptr;
+        using client_param_map  = std::map<std::string, client_param_sptr>;
+
+        struct client_create_info {
+            std::string         point;
+            std::string         device;
+            bool                tcp_nowait;
+            client_param_map    params;
+        };
 
         VTRC_DECLARE_SIGNAL( on_client_ready,
                              void( vtrc::client::base_sptr,
-                                   const std::string &dev ) );
+                                   const client_create_info & ) );
 
         VTRC_DECLARE_SIGNAL( on_client_disconnect,
-                             void( vtrc::client::base_sptr ) );
+                             void( vtrc::client::base_sptr,
+                                   const client_create_info &) );
 
     public:
-
-        struct client_create_info {
-            std::string point;
-            std::string device;
-            bool        tcp_nowait;
-        };
 
         clients( application *app );
         static std::shared_ptr<clients> create( application *app );

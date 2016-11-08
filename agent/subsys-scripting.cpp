@@ -9,6 +9,7 @@
 #include "common/utilities.h"
 #include "common/tuntap.h"
 #include "common/net-ifaces.h"
+#include "common/parameter.h"
 
 #include "boost/algorithm/string.hpp"
 
@@ -31,6 +32,7 @@ namespace msctl { namespace agent {
         namespace objects   = mlua::objects;
 
         using utilities::decorators::quote;
+        using param_map = std::map<std::string, utilities::parameter_sptr>;
 
         int lcall_log_print( lua_State *L )
         {
@@ -93,6 +95,11 @@ namespace msctl { namespace agent {
                 return table_wrap( state, obj );
             }
 
+            objects::base_sptr as_object( )
+            {
+                return ptr;
+            }
+
             bool is_string( ) const
             {
                 return ptr->type_id( ) == objects::base::TYPE_STRING;
@@ -141,6 +148,22 @@ namespace msctl { namespace agent {
             }
 
         };
+
+        struct event_callback: public utilities::parameter {
+            lua_State           *state;
+            objects::base_sptr   call;
+        };
+
+        void add_param( param_map& store, lua_State *state,
+                        const std::string &name, objects::base_sptr call )
+        {
+            if( call && call->type_id( ) == objects::base::TYPE_FUNCTION ) {
+                auto par = std::make_shared<event_callback>( );
+                par->state = state;
+                par->call  = call;
+                store[name] = par;
+            }
+        }
 
         int lcall_add_device( lua_State *L )
         {
@@ -343,6 +366,7 @@ namespace msctl { namespace agent {
             auto svc = ls.get_object(  );
             int res = 0;
             if( svc && svc->is_container( ) ) {
+
                 clients::client_create_info inf;
 
                 table_wrap tw(L, svc);
@@ -350,6 +374,18 @@ namespace msctl { namespace agent {
                 inf.point      = tw["addr"].as_string( );
                 inf.device     = tw["dev"].as_string( );
                 inf.tcp_nowait = tw["tcp_nowait"].as_bool( true );
+
+                auto on_register   = tw["on_register"].as_object( );
+                auto on_disconnect = tw["on_disconnect"].as_object( );
+
+                add_param( inf.params, L, "on_register", on_register );
+                add_param( inf.params, L, "on_disconnect", on_disconnect );
+
+//                if( on_register && on_register. )
+//                inf.params[]
+
+//                call->push( L );
+//                int res = lua_pcall( L, 0, LUA_MULTRET, 0 );
 
                 if( inf.point.empty( ) ) {
                     LOGERR << "Bad client format: " << quote(svc->str( ))

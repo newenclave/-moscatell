@@ -440,22 +440,25 @@ namespace {
                       ;
         }
 
-        void on_disconnect( client_info_wptr wc, const std::string &point )
+        using client_create_info_sptr =
+                    std::shared_ptr<clients::client_create_info>;
+
+        void on_disconnect( client_info_wptr wc, client_create_info_sptr inf )
         {
             if( working_ ) {
                 using utilities::decorators::quote;
                 auto c = wc.lock( );
                 if( c ) {
-                    LOGINF << "Client disconnected " << quote(point)
+                    LOGINF << "Client disconnected " << quote(inf->point)
                                 ;
-                    parent_->get_on_client_disconnect( )( c->client );
+                    parent_->get_on_client_disconnect( )( c->client, *inf );
                     del_client( c->client );
                     c->start_timer( );
                 }
             }
         }
 
-        void on_ready( client_info_wptr wc, const std::string &dev )
+        void on_ready( client_info_wptr wc, client_create_info_sptr inf )
         {
             using utilities::decorators::quote;
             if( working_ ) {
@@ -464,10 +467,11 @@ namespace {
                     LOGINF << "Client is ready for device "
                            << quote(c->device)
                               ;
+                    auto dev = inf->device;
                     app_->get_rpc_service( ).post( [this, c, dev]( ) {
                         add_client( c->client, dev );
                     } );
-                    parent_->get_on_client_ready( )( c->client, dev );
+                    parent_->get_on_client_ready( )( c->client, *inf );
                 }
             }
         }
@@ -475,8 +479,11 @@ namespace {
         bool add( const clients::client_create_info &add_info, bool auto_start )
         {
             using utilities::decorators::quote;
+            using client_create_info = clients::client_create_info;
             auto point = add_info.point;
             auto dev   = add_info.device;
+
+            auto create_info = std::make_shared<client_create_info>( add_info );
 
             auto inf  = utilities::get_endpoint_info( add_info.point );
             auto clnt = client_info::create( app_ );
@@ -491,9 +498,9 @@ namespace {
                 } );
 
             clnt->client->on_ready_connect(
-                [this, clnt_wptr, dev]( )
+                [this, clnt_wptr, create_info]( )
                 {
-                    this->on_ready( clnt_wptr, dev );
+                    this->on_ready( clnt_wptr, create_info );
                 } );
 
             clnt->client->on_connect_connect(
@@ -502,8 +509,8 @@ namespace {
                 } );
 
             clnt->client->on_disconnect_connect(
-                [this, clnt_wptr, point](  ) {
-                    this->on_disconnect( clnt_wptr, point );
+                [this, clnt_wptr, create_info](  ) {
+                    this->on_disconnect( clnt_wptr, create_info );
                 } );
 
             bool failed = inf.is_none( );
