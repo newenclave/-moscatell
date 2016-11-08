@@ -293,7 +293,6 @@ namespace {
     using clients_set = std::set<vclnt::base_sptr>;
     using create_info_sptr = std::shared_ptr<clients::client_create_info>;
 
-
 }
 
     struct clients::impl {
