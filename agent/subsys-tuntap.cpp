@@ -43,7 +43,7 @@ namespace msctl { namespace agent {
         impl( application *app )
             :app_(app)
             ,log_(app_->log( ))
-            //,call_(app->get_rpc_service( ))
+//            /,call_(app->get_rpc_service( ))
         {
             gs_logger = &log_;
         }
