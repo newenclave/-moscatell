@@ -351,8 +351,11 @@ namespace {
             dev_keeper keeper;
 
             std::string dev = dev_hint->device;
+
             keeper.dev = client_transport::create( dev, c.get( ) );
             keeper.c   = c;
+
+            dev_hint->device = dev; // store new device name
 
             if( keeper.dev ) {
 
@@ -389,7 +392,6 @@ namespace {
                     reginfo.iface_addr  = saddr.to_string( );
                     reginfo.remote_addr = daddr.to_string( );
                     reginfo.net_mask    = mask.to_string( );
-                    reginfo.device_name = dev;
 
                     common::setup_device( hdl, dev,
                                           reginfo.iface_addr,

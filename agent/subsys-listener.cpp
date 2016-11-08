@@ -258,7 +258,10 @@ namespace {
             auto &log_(*gs_logger);
 
             using std::make_shared;
+
             auto dev  = common::open_tun( inf->device );
+            inf->device = dev.name( ); /// device name can be empty
+
             auto inst = make_shared<server_transport>
                                 ( app->get_io_service( ), inf );
 

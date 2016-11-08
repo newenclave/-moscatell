@@ -666,7 +666,7 @@ namespace msctl { namespace agent {
             res.add( "addr",      new_string( reg.iface_addr ) );
             res.add( "mask",      new_string( reg.net_mask ) );
             res.add( "dst_addr",  new_string( reg.remote_addr ) );
-            res.add( "device",    new_string( reg.device_name ) );
+            res.add( "device",    new_string( inf.device ) );
 
             call_event( "on_register", inf.params, res );
         }
