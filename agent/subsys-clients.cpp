@@ -498,6 +498,8 @@ namespace {
             clnt->device = dev;
             auto clnt_wptr = std::weak_ptr<client_info>( clnt );
 
+            clnt->client->set_session_id( add_info.id );
+
             clnt->client->on_init_error_connect(
                 [this, point, clnt_wptr]( const verrs::container &errs,
                                const char *mesg )

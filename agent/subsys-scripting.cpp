@@ -35,6 +35,10 @@ namespace msctl { namespace agent {
         namespace mlua      = msctl::lua;
         namespace objects   = mlua::objects;
 
+        using objects::new_string;
+        using objects::new_integer;
+        using objects::new_table;
+
         using utilities::decorators::quote;
         using param_map = std::map<std::string, utilities::parameter_sptr>;
 
@@ -398,6 +402,7 @@ namespace msctl { namespace agent {
                 inf.point      = tw["addr"].as_string( );
                 inf.device     = tw["dev"].as_string( );
                 inf.tcp_nowait = tw["tcp_nowait"].as_bool( true );
+                inf.id         = tw["id"].as_string( );
 
                 auto on_register   = tw["on_register"].as_object( );
                 auto on_disconnect = tw["on_disconnect"].as_object( );
@@ -586,15 +591,28 @@ namespace msctl { namespace agent {
             }
         }
 
+        void add_client_to_table( objects::table &res,
+                                  vtrc::client::base_sptr c )
+        {
+            auto ptr  = reinterpret_cast<std::uint64_t>(c.get( ));
+            auto name = c->connection( )->name( );
+            auto id   = c->connection( )->id( );
+
+            res.add( "client", new_table( )
+                     ->add( "name", new_string( name ) )
+                     ->add( "prt",  new_integer( ptr ) )
+                     ->add( "id",   new_string( id ) )
+                    );
+        }
+
         void on_client_disconnect( vtrc::client::base_sptr c,
                                    const clients::client_create_info &inf )
         {
             using objects::new_string;
             using objects::new_integer;
             objects::table res;
-            auto id = reinterpret_cast<std::uint64_t>(c.get( ));
 
-            res.add( "client_id", new_integer( id ) );
+            add_client_to_table( res, c );
 
             call_event( "on_disconnect", inf.params, res );
         }
@@ -609,13 +627,7 @@ namespace msctl { namespace agent {
 
             objects::table res;
 
-            auto id   = reinterpret_cast<std::uint64_t>(c.get( ));
-            auto name = c->connection( )->name( );
-
-            res.add( "client", new_table( )
-                     ->add( "name", new_string( name ) )
-                     ->add( "prt",  new_integer( id ) )
-                    );
+            add_client_to_table( res, c );
 
             res.add( "addr",      new_string( reg.iface_addr ) );
             res.add( "mask",      new_string( reg.net_mask ) );

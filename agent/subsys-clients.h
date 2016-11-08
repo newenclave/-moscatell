@@ -25,6 +25,7 @@ namespace msctl { namespace agent {
             std::string         point;
             std::string         device;
             bool                tcp_nowait;
+            std::string         id;
             client_param_map    params;
         };
 
