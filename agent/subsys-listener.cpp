@@ -235,6 +235,8 @@ namespace {
         shared_type create( application *app,
                             const listener::server_create_info &inf )
         {
+            auto &log_(*gs_logger);
+
             using std::make_shared;
             auto dev  = common::open_tun( inf.device );
             auto inst = make_shared<server_transport>
@@ -245,6 +247,10 @@ namespace {
             inst->addr_ = ba::ip::address_v4( addr_mask.first );
             inst->mask_ = ba::ip::address_v4( addr_mask.second );
 
+            LOGINF << "Got ip for " << quote( inf.device )
+                   << " " << quote( inst->addr_.to_string( ) )
+                   << " mask " << quote( inst->mask_.to_string( ) )
+                      ;
             //std::cerr <<
 
             inst->get_stream( ).assign( dev.release( ));

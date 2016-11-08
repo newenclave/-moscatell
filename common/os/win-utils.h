@@ -8,32 +8,37 @@
 
 namespace utilities {
 
-	inline
-	void fill_native_version( OSVERSIONINFOA *info ) {
+inline
+bool fill_native_version( OSVERSIONINFO *info )
+{
 
-		LONG( __stdcall *NtRtlGetVersion )(PRTL_OSVERSIONINFOW);
+    LONG( __stdcall *NtRtlGetVersion )(PRTL_OSVERSIONINFOW);
 
-		RTL_OSVERSIONINFOW oi = { 0 };
+    RTL_OSVERSIONINFOW oi = { 0 };
 
-		oi.dwOSVersionInfoSize = sizeof( oi );
+    oi.dwOSVersionInfoSize = sizeof( oi );
 
-		(FARPROC&)NtRtlGetVersion = GetProcAddress( GetModuleHandleA( "ntdll.dll" ), "RtlGetVersion" );
+    auto ntdll   = GetModuleHandle( _T("ntdll.dll") );
+    auto farproc = GetProcAddress( ntdll, "RtlGetVersion" );
 
-		if( !NtRtlGetVersion ) {
-			return;
-		}
+    if( !farproc ) {
+        return false;
+    }
 
-		if( NtRtlGetVersion( &oi ) ) {
-			return;
-		}
+    NtRtlGetVersion = reinterpret_cast<decltype(NtRtlGetVersion)>(farproc);
 
-		if( info ) {
-			info->dwBuildNumber = oi.dwBuildNumber;
-			info->dwMajorVersion = oi.dwMajorVersion;
-			info->dwMinorVersion = oi.dwMinorVersion;
-			info->dwPlatformId = oi.dwPlatformId;
-		}
-	};
+    if( NtRtlGetVersion( &oi ) ) {
+        return false;
+    }
+
+    if( info ) {
+        info->dwBuildNumber  = oi.dwBuildNumber;
+        info->dwMajorVersion = oi.dwMajorVersion;
+        info->dwMinorVersion = oi.dwMinorVersion;
+        info->dwPlatformId   = oi.dwPlatformId;
+    }
+    return true;
+};
 
 struct charset {
     static std::basic_string<char> make_mb_string( LPCWSTR src,

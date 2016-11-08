@@ -7,6 +7,7 @@ namespace utilities {
 
     struct parameter {
         virtual ~parameter( ) { }
+        virtual void apply( ) = 0;
     };
     using parameter_sptr = std::shared_ptr<parameter>;
 }

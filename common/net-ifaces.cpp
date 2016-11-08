@@ -59,7 +59,8 @@ namespace {
     typedef std::vector<MIB_IPADDRROW>         mib_table_type;
     typedef std::vector<PIP_ADAPTER_ADDRESSES> pip_table_type;
 
-    bool fill_native_version( OSVERSIONINFO *info ) {
+    bool fill_native_version( OSVERSIONINFO *info )
+    {
 
         LONG( __stdcall *NtRtlGetVersion )(PRTL_OSVERSIONINFOW);
 

@@ -291,6 +291,8 @@ namespace {
     using client_info_wptr = std::weak_ptr<client_info>;
     using clients_map = std::map<std::string, client_info_sptr>;
     using clients_set = std::set<vclnt::base_sptr>;
+    using create_info_sptr = std::shared_ptr<clients::client_create_info>;
+
 
 }
 
@@ -327,7 +329,7 @@ namespace {
             }
         }
 
-        void add_client( vclnt::base_sptr c, const std::string &dev_hint )
+        void add_client( vclnt::base_sptr c, create_info_sptr dev_hint )
         {
 
             struct dev_keeper {
@@ -349,7 +351,7 @@ namespace {
 
             dev_keeper keeper;
 
-            std::string dev = dev_hint;
+            std::string dev = dev_hint->device;
             keeper.dev = client_transport::create( dev, c.get( ) );
             keeper.c   = c;
 
@@ -382,10 +384,19 @@ namespace {
                            << " and mask: " << quote(mask.to_string( ));
 
                     auto hdl = keeper.dev->get_stream( ).native_handle( );
+
+                    clients::register_info reginfo;
+
+                    reginfo.iface_addr  = saddr.to_string( );
+                    reginfo.remote_addr = daddr.to_string( );
+                    reginfo.net_mask    = mask.to_string( );
+
                     common::setup_device( hdl, dev,
-                                          saddr.to_string( ),
-                                          daddr.to_string( ),
-                                          mask.to_string( ) );
+                                          reginfo.iface_addr,
+                                          reginfo.remote_addr,
+                                          reginfo.net_mask );
+
+                    parent_->get_on_client_register( )( c, *dev_hint, reginfo );
 
                     LOGINF << "Device setup success.";
 
@@ -440,10 +451,7 @@ namespace {
                       ;
         }
 
-        using client_create_info_sptr =
-                    std::shared_ptr<clients::client_create_info>;
-
-        void on_disconnect( client_info_wptr wc, client_create_info_sptr inf )
+        void on_disconnect( client_info_wptr wc, create_info_sptr inf )
         {
             if( working_ ) {
                 using utilities::decorators::quote;
@@ -458,7 +466,7 @@ namespace {
             }
         }
 
-        void on_ready( client_info_wptr wc, client_create_info_sptr inf )
+        void on_ready( client_info_wptr wc, create_info_sptr inf )
         {
             using utilities::decorators::quote;
             if( working_ ) {
@@ -467,9 +475,8 @@ namespace {
                     LOGINF << "Client is ready for device "
                            << quote(c->device)
                               ;
-                    auto dev = inf->device;
-                    app_->get_rpc_service( ).post( [this, c, dev]( ) {
-                        add_client( c->client, dev );
+                    app_->get_rpc_service( ).post( [this, c, inf]( ) {
+                        add_client( c->client, inf );
                     } );
                     parent_->get_on_client_ready( )( c->client, *inf );
                 }

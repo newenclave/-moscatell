@@ -21,15 +21,20 @@ namespace utilities {
 
     public:
 
-		iface_info( const sockaddr *sa, const sockaddr *mask,
-					const std::string &name, size_t id );
+        iface_info( const sockaddr *sa, const sockaddr *mask,
+                    const std::string &name, size_t id );
 
-		iface_info( const address_type &sa, const address_type &mask,
-					const std::string &name, size_t id );
+        iface_info( const address_type &sa, const address_type &mask,
+                    const std::string &name, size_t id );
 
         const std::string &name( ) const
         {
             return name_;
+        }
+
+        size_t id( ) const
+        {
+            return id_;
         }
 
         const address_type &addr( ) const
@@ -50,11 +55,6 @@ namespace utilities {
         bool is_v6( ) const
         {
             return sockaddr_.is_v6( );
-        }
-
-        size_t id( ) const
-        {
-            return id_;
         }
 
         v4_type v4( )

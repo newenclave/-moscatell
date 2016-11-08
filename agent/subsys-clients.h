@@ -15,6 +15,7 @@ namespace msctl { namespace agent {
         struct          impl;
         friend struct   impl;
         impl           *impl_;
+
     public:
 
         using client_param_sptr = utilities::parameter_sptr;
@@ -27,9 +28,20 @@ namespace msctl { namespace agent {
             client_param_map    params;
         };
 
+        struct register_info {
+            std::string  iface_addr;
+            std::string  remote_addr;
+            std::string  net_mask;
+        };
+
         VTRC_DECLARE_SIGNAL( on_client_ready,
                              void( vtrc::client::base_sptr,
                                    const client_create_info & ) );
+
+        VTRC_DECLARE_SIGNAL( on_client_register,
+                             void( vtrc::client::base_sptr,
+                                   const client_create_info &,
+                                   const register_info & ) );
 
         VTRC_DECLARE_SIGNAL( on_client_disconnect,
                              void( vtrc::client::base_sptr,

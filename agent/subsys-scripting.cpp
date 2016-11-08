@@ -20,6 +20,10 @@
 #define LOGERR   LOG(logger_impl::level::error)
 #define LOGWRN   LOG(logger_impl::level::warning)
 
+#ifdef _WIN32
+#include "common/os/win-utils.h"
+#endif
+
 namespace msctl { namespace agent {
 
     namespace {
@@ -66,6 +70,10 @@ namespace msctl { namespace agent {
 
         void register_globals( mlua::state ls )
         {
+            ls.openlib( "base" );
+            ls.openlib( "string" );
+            ls.openlib( "math" );
+            ls.openlib( "utf8" );
             ls.register_call( "print", &lcall_log_print );
             ls.register_call( "shell", &lcall_system );
         }
@@ -149,19 +157,30 @@ namespace msctl { namespace agent {
 
         };
 
-        struct event_callback: public utilities::parameter {
+        struct event_callback final: public utilities::parameter {
             lua_State           *state;
             objects::base_sptr   call;
+            void apply( ) override
+            {
+                call->push( state );
+            }
         };
 
         void add_param( param_map& store, lua_State *state,
                         const std::string &name, objects::base_sptr call )
         {
-            if( call && call->type_id( ) == objects::base::TYPE_FUNCTION ) {
-                auto par = std::make_shared<event_callback>( );
-                par->state = state;
-                par->call  = call;
-                store[name] = par;
+            if( call ) {
+                bool is_func =
+                    ( call->type_id( ) == objects::base::TYPE_FUNCTION)
+                 || ( call->type_id( ) == ( objects::base::TYPE_FUNCTION
+                                          | objects::base::TYPE_REFERENCE ) );
+
+                if( is_func ) {
+                    auto par = std::make_shared<event_callback>( );
+                    par->state = state;
+                    par->call  = call;
+                    store[name] = par;
+                }
             }
         }
 
@@ -378,14 +397,8 @@ namespace msctl { namespace agent {
                 auto on_register   = tw["on_register"].as_object( );
                 auto on_disconnect = tw["on_disconnect"].as_object( );
 
-                add_param( inf.params, L, "on_register", on_register );
+                add_param( inf.params, L, "on_register",   on_register );
                 add_param( inf.params, L, "on_disconnect", on_disconnect );
-
-//                if( on_register && on_register. )
-//                inf.params[]
-
-//                call->push( L );
-//                int res = lua_pcall( L, 0, LUA_MULTRET, 0 );
 
                 if( inf.point.empty( ) ) {
                     LOGERR << "Bad client format: " << quote(svc->str( ))
@@ -444,6 +457,65 @@ namespace msctl { namespace agent {
             return 1;
         }
 
+        int lcall_net_ifaces( lua_State *L )
+        {
+            static auto &log_(gs_application->log( ));
+            using objects::new_string;
+            using objects::new_boolean;
+            using objects::new_integer;
+            using objects::new_table;
+            objects::table res;
+
+            auto ifaces = utilities::get_system_ifaces( );
+            for( auto &i: ifaces ) {
+                res.add( new_table( )
+                         ->add( "name", new_string( i.name( ) ) )
+                         ->add( "addr", new_string( i.addr( ).to_string( ) ) )
+                         ->add( "mask", new_string( i.mask( ).to_string( ) ) )
+                         ->add( "id",   new_integer( i.id( ) ) )
+                         ->add( "is_v4",   new_boolean( i.is_v4( ) ) )
+                         ->add( "is_v6",   new_boolean( i.is_v6( ) ) )
+                         );
+            }
+
+            res.push( L );
+            return 1;
+
+        }
+
+        int lcall_os_info( lua_State *L )
+        {
+            static auto &log_(gs_application->log( ));
+            using objects::new_string;
+            using objects::new_boolean;
+            using objects::new_integer;
+            using objects::new_table;
+            objects::table res;
+#if   defined(_WIN32)
+            res.add( "name", new_string( "windows" ) );
+            OSVERSIONINFO ovi;
+            if( utilities::fill_native_version( &ovi ) ) {
+                res.add( "verinfo", new_table( )
+                         ->add( "major", new_integer( ovi.dwMajorVersion ) )
+                         ->add( "minor", new_integer( ovi.dwMinorVersion ) )
+                         ->add( "minor", new_integer( ovi.dwMinorVersion ) )
+                         ->add( "platform_id", new_integer( ovi.dwPlatformId ) )
+                         ->add( "build", new_integer( ovi.dwBuildNumber ) )
+                         );
+            } else {
+                LOGERR << "Failed to get os version: " << GetLastError( );
+            }
+#elif defined( __linux__ )
+            res.add( "name", new_string( "linux" ) );
+#elif defined (__APPLE__)
+            res.add( "name", new_string( "apple" ) );
+#elif defined (__FreeBSD__) || defined( __OpenBSD__)
+            res.add( "name", new_string( "bsd" ) );
+#endif
+            res.push( L );
+            return 1;
+        }
+
         void state_init( lua_State *L )
         {
             mlua::state ls(L);
@@ -453,12 +525,18 @@ namespace msctl { namespace agent {
 
             /// set tables
             objects::table tab;
+
             tab.add( "server", new_function( &lcall_add_server ) );
             tab.add( "client", new_function( &lcall_add_client ) );
             tab.add( "logger", new_function( &lcall_add_logger ) );
             tab.add( "polls",  new_function( &lcall_set_polls  ) );
             tab.add( "mkdev",  new_function( &lcall_add_device ) );
             tab.add( "rmdev",  new_function( &lcall_del_device ) );
+
+            tab.add( "os", new_table( )
+                     ->add( "info", new_function( &lcall_os_info ) )
+                     ->add( "ifaces", new_function( &lcall_net_ifaces ) )
+                     );
 
             ls.set_object( "msctl", &tab );
 
@@ -471,12 +549,74 @@ namespace msctl { namespace agent {
         scripting       *parent_;
         logger_impl     &log_;
         mlua::state      state_;
+        std::mutex       state_lock_;
 
         impl( application *app )
             :app_(app)
             ,log_(app_->log( ))
         {
             gs_application = app_;
+        }
+
+        void call_event( const std::string &name, const param_map &map_params,
+                         objects::base &param )
+        {
+            auto f = map_params.find( name );
+            if( f != map_params.end( ) ) {
+
+                std::lock_guard<std::mutex> lck(state_lock_);
+
+                f->second->apply( );
+                param.push( state_.get_state( ) );
+
+                int res = lua_pcall( state_.get_state( ), 1, LUA_MULTRET, 0 );
+
+                if( res != LUA_OK ) {
+                    std::string err = state_.pop_error( );
+                    LOGERR << "Failed to call " << quote( name )
+                           << " for client; "   << err
+                           ;
+                }
+            }
+        }
+
+        void on_client_disconnect( vtrc::client::base_sptr,
+                                   const clients::client_create_info &inf )
+        {
+            objects::table res;
+            call_event( "on_disconnect", inf.params, res );
+        }
+
+        void on_client_register( vtrc::client::base_sptr c,
+                                 const clients::client_create_info &inf,
+                                 const clients::register_info &reg )
+        {
+            using objects::new_string;
+
+            objects::table res;
+
+            res.add( "client", new_string( c->connection( )->name( ) ) );
+            res.add( "saddr",  new_string( reg.iface_addr ) );
+            res.add( "daddr",  new_string( reg.remote_addr ) );
+            res.add( "mask",   new_string( reg.net_mask ) );
+
+            call_event( "on_register", inf.params, res );
+        }
+
+        void init( )
+        {
+            auto &cc( app_->subsys<clients>( ) );
+
+            cc.on_client_disconnect_connect(
+                [this]( vtrc::client::base_sptr clnt,
+                        const clients::client_create_info &inf )
+                { this->on_client_disconnect( clnt, inf ); } );
+
+            cc.on_client_register_connect(
+                [this]( vtrc::client::base_sptr c,
+                        const clients::client_create_info &inf,
+                        const clients::register_info &reg )
+                { this->on_client_register( c, inf, reg ); });
         }
 
         void run_config( const std::string &path )
@@ -503,6 +643,7 @@ namespace msctl { namespace agent {
     void scripting::init( )
     {
         state_init( impl_->state_.get_state( ) );
+        impl_->init( );
     }
 
     void scripting::start( )
