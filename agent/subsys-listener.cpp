@@ -539,11 +539,11 @@ namespace {
         }
 
         void on_stop_connection( vcomm::connection_iface *c,
-                                 std::shared_ptr<server_create_info> /*inf*/ )
+                                 std::shared_ptr<server_create_info> inf )
         {
             LOGINF << "Remove connection: " << quote(c->name( ));
             del_server_point( c );
-            parent_->get_on_stop_connection( )( c );
+            parent_->get_on_stop_connection( )( c, *inf );
         }
 
         bool add( const listener::server_create_info &srv_info, bool s )

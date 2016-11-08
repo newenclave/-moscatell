@@ -605,11 +605,49 @@ namespace msctl { namespace agent {
                     );
         }
 
+        void add_connection_to_table( objects::table &res,
+                                      vtrc::common::connection_iface *c )
+        {
+            auto ptr  = reinterpret_cast<std::uint64_t>( c );
+            auto name = c->name( );
+            auto id   = c->id( );
+
+            res.add( "client", new_table( )
+                     ->add( "name", new_string( name ) )
+                     ->add( "prt",  new_integer( ptr ) )
+                     ->add( "id",   new_string( id ) )
+                    );
+        }
+
+        void on_con_register( vtrc::common::connection_iface *c,
+                              const listener::server_create_info &inf,
+                              const listener::register_info &reg )
+        {
+            objects::table res;
+
+            add_connection_to_table( res, c );
+
+            res.add( "addr",      new_string( reg.ip ) );
+            res.add( "mask",      new_string( reg.mask ) );
+            res.add( "dst_addr",  new_string( reg.my_ip ) );
+            res.add( "device",    new_string( inf.device ) );
+
+            call_event( "on_register", inf.params, res );
+        }
+
+        void on_con_disconnect( vtrc::common::connection_iface *c,
+                                const listener::server_create_info &inf )
+        {
+            objects::table res;
+
+            add_connection_to_table( res, c );
+
+            call_event( "on_disconnect", inf.params, res );
+        }
+
         void on_client_disconnect( vtrc::client::base_sptr c,
                                    const clients::client_create_info &inf )
         {
-            using objects::new_string;
-            using objects::new_integer;
             objects::table res;
 
             add_client_to_table( res, c );
@@ -621,10 +659,6 @@ namespace msctl { namespace agent {
                                  const clients::client_create_info &inf,
                                  const clients::register_info &reg )
         {
-            using objects::new_string;
-            using objects::new_integer;
-            using objects::new_table;
-
             objects::table res;
 
             add_client_to_table( res, c );

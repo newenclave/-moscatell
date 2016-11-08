@@ -44,7 +44,8 @@ namespace msctl { namespace agent {
                                     const register_info & ) );
 
         VTRC_DECLARE_SIGNAL( on_stop_connection,
-                             void ( vtrc::common::connection_iface * ));
+                             void ( vtrc::common::connection_iface *,
+                                    const listener::server_create_info & ) );
 
 
     public:
