@@ -663,9 +663,9 @@ namespace msctl { namespace agent {
 
             add_client_to_table( res, c );
 
-            res.add( "addr",      new_string( reg.iface_addr ) );
-            res.add( "mask",      new_string( reg.net_mask ) );
-            res.add( "dst_addr",  new_string( reg.remote_addr ) );
+            res.add( "addr",      new_string( reg.ip ) );
+            res.add( "mask",      new_string( reg.mask ) );
+            res.add( "dst_addr",  new_string( reg.server_ip ) );
             res.add( "device",    new_string( inf.device ) );
 
             call_event( "on_register", inf.params, res );

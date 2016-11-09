@@ -389,14 +389,14 @@ namespace {
 
                     clients::register_info reginfo;
 
-                    reginfo.iface_addr  = saddr.to_string( );
-                    reginfo.remote_addr = daddr.to_string( );
-                    reginfo.net_mask    = mask.to_string( );
+                    reginfo.ip        = saddr.to_string( );
+                    reginfo.mask      = mask.to_string( );
+                    reginfo.server_ip = daddr.to_string( );
 
                     common::setup_device( hdl, dev,
-                                          reginfo.iface_addr,
-                                          reginfo.remote_addr,
-                                          reginfo.net_mask );
+                                          reginfo.ip,
+                                          reginfo.server_ip,
+                                          reginfo.mask );
 
                     parent_->get_on_client_register( )( c, *dev_hint, reginfo );
 

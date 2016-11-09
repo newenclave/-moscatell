@@ -30,9 +30,9 @@ namespace msctl { namespace agent {
         };
 
         struct register_info {
-            std::string  iface_addr;
-            std::string  remote_addr;
-            std::string  net_mask;
+            std::string ip;
+            std::string mask;
+            std::string server_ip;
         };
 
         VTRC_DECLARE_SIGNAL( on_client_ready,
