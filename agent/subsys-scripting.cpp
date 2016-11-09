@@ -638,6 +638,7 @@ namespace msctl { namespace agent {
             res.add( "dst_addr",  new_string( reg.my_ip ) );
             res.add( "device",    new_string( inf.device ) );
 
+            LOGDBG << "Calling server on_register.";
             call_event( "on_register", inf.params, res );
         }
 
@@ -648,6 +649,7 @@ namespace msctl { namespace agent {
 
             add_connection_to_table( res, c );
 
+            LOGDBG << "Calling server on_disconnect.";
             call_event( "on_disconnect", inf.params, res );
         }
 
@@ -658,6 +660,7 @@ namespace msctl { namespace agent {
 
             add_client_to_table( res, c );
 
+            LOGDBG << "Calling client on_disconnect.";
             call_event( "on_disconnect", inf.params, res );
         }
 
@@ -674,6 +677,7 @@ namespace msctl { namespace agent {
             res.add( "dst_addr",  new_string( reg.server_ip ) );
             res.add( "device",    new_string( inf.device ) );
 
+            LOGDBG << "Calling client on_register.";
             call_event( "on_register", inf.params, res );
         }
 
@@ -681,6 +685,7 @@ namespace msctl { namespace agent {
         {
             auto &cc( app_->subsys<clients>( ) );
 
+            ////////////// Clients
             cc.on_client_disconnect_connect(
                 [this]( vtrc::client::base_sptr clnt,
                         const clients::client_create_info &inf )
@@ -691,6 +696,20 @@ namespace msctl { namespace agent {
                         const clients::client_create_info &inf,
                         const clients::register_info &reg )
                 { this->on_client_register( c, inf, reg ); });
+
+            ////////////// Listeners
+            auto &ll( app_->subsys<listener>( ) );
+
+            ll.on_reg_connection_connect(
+                [this]( vtrc::common::connection_iface *c,
+                        const listener::server_create_info &inf,
+                        const listener::register_info &reg )
+                { this->on_con_register( c, inf, reg ); });
+
+            ll.on_stop_connection_connect(
+                [this]( vtrc::common::connection_iface *c,
+                        const listener::server_create_info &inf )
+                { this->on_con_disconnect( c, inf ); });
         }
 
         void run_config( const std::string &path )
