@@ -478,7 +478,7 @@ namespace {
 
                 if( info->transport ) {
 
-                    auto reg_callback =
+                    info->transport->on_client_register =
                             [this]( vtrc::common::connection_iface *clnt,
                                     const listener::server_create_info &cinf,
                                     const listener::register_info &rinf)
@@ -486,7 +486,6 @@ namespace {
                         parent_->get_on_reg_connection( )( clnt, cinf, rinf );
                     };
 
-                    info->transport->on_client_register = reg_callback;
                     info->transport->start_read( );
 
                     vtrc::upgrade_to_unique ulck(lck);

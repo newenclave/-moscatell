@@ -95,12 +95,12 @@ namespace lua { namespace objects {
 
         bool is_reference( ) const
         {
-            return 0 != (type_id( ) & TYPE_REFERENCE);
+            return TYPE_REFERENCE == (type_id( ) & TYPE_REFERENCE);
         }
 
         static bool is_reference( const base *o )
         {
-            return 0 != (o->type_id( ) & TYPE_REFERENCE);
+            return TYPE_REFERENCE == (o->type_id( ) & TYPE_REFERENCE);
         }
 
         virtual base * clone( ) const = 0;
@@ -813,10 +813,26 @@ namespace lua { namespace objects {
             return ref;
         }
 
+        static int create_ref( lua_State *state, const base *obj )
+        {
+            obj->push( state );
+            lua_pushvalue( state, -1 );
+            int ref = luaL_ref( state, LUA_REGISTRYINDEX );
+            lua_pop( state, 1 );
+
+            return ref;
+        }
+
         reference( lua_State *state, int index )
             :state_(state)
             ,ref_(create_ref( state, index ))
             ,type_(lua_type( state, index ) | base::TYPE_REFERENCE)
+        { }
+
+        reference( lua_State *state, const base *obj )
+            :state_(state)
+            ,ref_(create_ref( state, obj ))
+            ,type_(lua_type( state, obj->type_id( ) ) | base::TYPE_REFERENCE)
         { }
 
         reference( lua_State *state, int /*index*/, int ref )
@@ -954,6 +970,11 @@ namespace lua { namespace objects {
     inline reference * new_reference( lua_State *L, int id )
     {
         return new reference( L, id );
+    }
+
+    inline reference * new_reference( lua_State *L, const base *obj )
+    {
+        return new reference( L, obj );
     }
 
     inline light_userdata * new_light_userdata( void *data )

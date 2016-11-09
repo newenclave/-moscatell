@@ -71,8 +71,12 @@ namespace msctl { namespace agent {
         int lcall_system( lua_State *L )
         {
             mlua::state ls(L);
-            objects::table res;
             auto cmd = ls.get_opt<std::string>( );
+#ifdef _WIN32
+            using namespace utilities::charset;
+            /// convert string from utf8 to win locale
+            cmd = make_mb_string( make_ws_string( cmd ) );
+#endif
             ls.push( ::system( cmd.c_str( ) ) );
             return 1;
         }
@@ -175,7 +179,7 @@ namespace msctl { namespace agent {
             }
         };
 
-        void add_param( param_map& store, lua_State *state,
+        void add_call( param_map& store, lua_State *state,
                         const std::string &name, objects::base_sptr call )
         {
             if( call ) {
@@ -190,6 +194,17 @@ namespace msctl { namespace agent {
                     par->call  = call;
                     store[name] = par;
                 }
+            }
+        }
+
+        void add_param( param_map& store, lua_State *state,
+                        const std::string &name, objects::base_sptr param )
+        {
+            if( param ) {
+                auto par = std::make_shared<event_callback>( );
+                par->state = state;
+                par->call  = param;
+                store[name] = par;
             }
         }
 
@@ -275,8 +290,13 @@ namespace msctl { namespace agent {
                 auto on_del = tw["on_disconnect"].as_object();
                 auto on_reg = tw["on_register"].as_object();
 
-                add_param( inf.params, L, "on_disconnect", on_del );
-                add_param( inf.params, L, "on_register", on_reg );
+                add_call( inf.params, L, "on_disconnect", on_del );
+                add_call( inf.params, L, "on_register", on_reg );
+
+                objects::table p;
+                auto param_ref = std::make_shared<objects::reference>( L, &p );
+                add_param( inf.params, L, "parameter", param_ref );
+
 
                 if( inf.point.empty( ) || addr_poll.empty( ) ) {
                     LOGERR << "Bad server format: " << quote(svc->str( ))
@@ -410,11 +430,15 @@ namespace msctl { namespace agent {
                 inf.tcp_nowait = tw["tcp_nowait"].as_bool( true );
                 inf.id         = tw["id"].as_string( );
 
-                auto on_register   = tw["on_register"].as_object( );
-                auto on_disconnect = tw["on_disconnect"].as_object( );
+                auto on_reg = tw["on_register"].as_object( );
+                auto on_dis = tw["on_disconnect"].as_object( );
 
-                add_param( inf.params, L, "on_register",   on_register );
-                add_param( inf.params, L, "on_disconnect", on_disconnect );
+                add_call( inf.params, L, "on_register",   on_reg );
+                add_call( inf.params, L, "on_disconnect", on_dis );
+
+                objects::table p;
+                auto param_ref = std::make_shared<objects::reference>( L, &p );
+                add_param( inf.params, L, "parameter", param_ref );
 
                 if( inf.point.empty( ) ) {
                     LOGERR << "Bad client format: " << quote(svc->str( ))
@@ -581,12 +605,21 @@ namespace msctl { namespace agent {
             auto f = map_params.find( name );
             if( f != map_params.end( ) ) {
 
+                auto par = map_params.find( "parameter" );
+
+                size_t params = par != map_params.end( );
+
                 std::lock_guard<std::mutex> lck(state_lock_);
 
                 f->second->apply( );
                 param.push( state_.get_state( ) );
 
-                int res = lua_pcall( state_.get_state( ), 1, LUA_MULTRET, 0 );
+                if( params != 0 ) {
+                    par->second->apply( );
+                }
+
+                int res = lua_pcall( state_.get_state( ),
+                                     params + 1, LUA_MULTRET, 0 );
 
                 if( res != LUA_OK ) {
                     std::string err = state_.pop_error( );
@@ -638,7 +671,6 @@ namespace msctl { namespace agent {
             res.add( "dst_addr",  new_string( reg.my_ip ) );
             res.add( "device",    new_string( inf.device ) );
 
-            LOGDBG << "Calling server on_register.";
             call_event( "on_register", inf.params, res );
         }
 
@@ -649,7 +681,6 @@ namespace msctl { namespace agent {
 
             add_connection_to_table( res, c );
 
-            LOGDBG << "Calling server on_disconnect.";
             call_event( "on_disconnect", inf.params, res );
         }
 
@@ -660,7 +691,6 @@ namespace msctl { namespace agent {
 
             add_client_to_table( res, c );
 
-            LOGDBG << "Calling client on_disconnect.";
             call_event( "on_disconnect", inf.params, res );
         }
 
@@ -677,7 +707,6 @@ namespace msctl { namespace agent {
             res.add( "dst_addr",  new_string( reg.server_ip ) );
             res.add( "device",    new_string( inf.device ) );
 
-            LOGDBG << "Calling client on_register.";
             call_event( "on_register", inf.params, res );
         }
 
