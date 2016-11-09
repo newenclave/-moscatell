@@ -272,6 +272,12 @@ namespace msctl { namespace agent {
                 auto addr_poll  = tw["addr_poll"].as_string( );
                 inf.tcp_nowait  = tw["tcp_nowait"].as_bool( true );
 
+                auto on_del = tw["on_disconnect"].as_object();
+                auto on_reg = tw["on_register"].as_object();
+
+                add_param( inf.params, L, "on_disconnect", on_del );
+                add_param( inf.params, L, "on_register", on_reg );
+
                 if( inf.point.empty( ) || addr_poll.empty( ) ) {
                     LOGERR << "Bad server format: " << quote(svc->str( ))
                            << " addr = " << quote(inf.point)
