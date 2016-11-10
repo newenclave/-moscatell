@@ -583,7 +583,10 @@ namespace {
                 LOGINF << "Adding "      << quote(point)
                        << " for device " << quote(dev);
 
-                res->assign_lowlevel_protocol_factory( lowlevel::server_proto );
+                res->assign_lowlevel_protocol_factory(
+                    [this]( ) {
+                        return lowlevel::server_proto( app_ );
+                    } );
 
                 res->on_start_connect(
                     [this, srv_info](  ) {

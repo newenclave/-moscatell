@@ -1,0 +1,20 @@
+package msctl.rpc.ll;
+
+option cc_generic_services = true;
+
+//////////////// COMMON //////////////////
+
+message error {
+    optional uint32 code =  1;
+    optional string mess =  2;
+}
+
+//////////////// SERVER //////////////////
+
+message hello {
+    optional error  err           =  1;
+    optional string hello_message =  2;
+}
+
+//////////////// CLIENT //////////////////
+

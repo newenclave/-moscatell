@@ -502,8 +502,11 @@ namespace {
             auto clnt_wptr = std::weak_ptr<client_info>( clnt );
 
             clnt->client->set_session_id( add_info.id );
-            clnt->client
-                ->assign_lowlevel_protocol_factory( lowlevel::client_proto );
+
+            clnt->client->assign_lowlevel_protocol_factory(
+                [this]( ) {
+                    return lowlevel::client_proto( app_ );
+                } );
 
             clnt->client->on_init_error_connect(
                 [this, point, clnt_wptr]( const verrs::container &errs,
