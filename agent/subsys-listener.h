@@ -25,7 +25,8 @@ namespace msctl { namespace agent {
             std::string                     point;
             std::string                     device;
             utilities::address_v4_poll      addr_poll;
-            bool                            tcp_nowait;
+            std::uint32_t                   max_queue = 10;
+            bool                            tcp_nowait = false;
             lowlevel::server_proto_option   ll_opts; /// options for lowlevel
             listener_param_map              params;
         };

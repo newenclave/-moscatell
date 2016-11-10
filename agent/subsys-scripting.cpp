@@ -285,7 +285,10 @@ namespace msctl { namespace agent {
                 inf.point                 = tw["addr"].as_string( );
                 inf.device                = tw["dev"].as_string( );
                 inf.tcp_nowait            = tw["tcp_nowait"].as_bool( true );
+                inf.max_queue             = tw["max_queue"].as_uint32( );
                 inf.ll_opts.hello_message = tw["txt.hello"].as_string( );
+
+                if( inf.max_queue < 5 ) inf.max_queue = 5;
 
                 auto addr_poll  = tw["addr_poll"].as_string( );
 
