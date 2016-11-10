@@ -775,11 +775,15 @@ namespace msctl { namespace agent {
         return res;
     }
 
-    void logging::add_logger_output( const std::string &params )
+    void logging::add_logger_output(const std::string &params , bool safe )
     {
-        impl_->log_.dispatch( [this, params]( ) {
+        if( safe ) {
+            impl_->log_.dispatch( [this, params]( ) {
+                impl_->add_logger_output( params );
+            } );
+        } else {
             impl_->add_logger_output( params );
-        } );
+        }
     }
 
     void logging::del_logger_output( const std::string &name )

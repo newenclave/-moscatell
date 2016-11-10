@@ -27,7 +27,7 @@ namespace msctl { namespace agent {
                                    std::int32_t flush_timeout );
         static shared_type create( application *app );
 
-        void add_logger_output( const std::string &params );
+        void add_logger_output( const std::string &params, bool safe = true );
         void del_logger_output( const std::string &name );
 
     public:

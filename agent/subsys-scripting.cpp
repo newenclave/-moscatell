@@ -395,8 +395,10 @@ namespace msctl { namespace agent {
                         return 2;
                     }
 
-                    gs_application->subsys<logging>( ).add_logger_output(path);
+                    gs_application->subsys<logging>( )
+                                   .add_logger_output( path, false );
                     ls.push( true );
+
                 } else if( svc->type_id( ) == objects::base::TYPE_STRING ) {
                     gs_application->subsys<logging>( )
                                   .add_logger_output( svc->str( ) );
