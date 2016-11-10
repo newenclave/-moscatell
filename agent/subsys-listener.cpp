@@ -16,6 +16,10 @@
 #include "vtrc-common/vtrc-stub-wrapper.h"
 #include "vtrc-common/vtrc-mutex-typedefs.h"
 #include "vtrc-common/vtrc-delayed-call.h"
+#include "vtrc-common/vtrc-protocol-defaults.h"
+
+#include "vtrc-rpc-options.pb.h"
+#include "vtrc-rpc-lowlevel.pb.h"
 
 #include "vtrc-server/vtrc-channels.h"
 
@@ -560,10 +564,14 @@ namespace {
             auto inf = utilities::get_endpoint_info( point );
             vserv::listener_sptr res;
 
+            auto opts = vcomm::defaults::session_options( );
+
+            opts.set_max_active_calls( 10 );
+
             if( inf.is_local( ) ) {
-                res = local::create( *app_, inf.addpess );
+                res = local::create( *app_, opts, inf.addpess );
             } else if( inf.is_ip( ) ) {
-                res = tcp::create( *app_, inf.addpess, inf.service,
+                res = tcp::create( *app_, opts, inf.addpess, inf.service,
                                    srv_info.tcp_nowait );
             } else {
                 LOGERR << "Failed to add endpoint '"
