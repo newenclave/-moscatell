@@ -29,7 +29,7 @@ namespace msctl { namespace agent { namespace lowlevel {
         {
             rpc::ll::hello mess;
 
-            mess.set_hello_message( "Hello!" );
+            mess.set_hello_message( "Tervetuloa! Hola el meu amic!" );
 
             auto res = mess.SerializeAsString( );
             return std::move(res);
