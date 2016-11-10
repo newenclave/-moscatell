@@ -18,6 +18,8 @@
 #include "vtrc-common/vtrc-mutex-typedefs.h"
 #include "vtrc-server/vtrc-channels.h"
 
+#include "lowlevel-protocol-client.h"
+
 #define LOG(lev) log_(lev, "clients") 
 #define LOGINF   LOG(logger_impl::level::info)
 #define LOGDBG   LOG(logger_impl::level::debug)
@@ -500,6 +502,8 @@ namespace {
             auto clnt_wptr = std::weak_ptr<client_info>( clnt );
 
             clnt->client->set_session_id( add_info.id );
+            clnt->client
+                ->assign_lowlevel_protocol_factory( lowlevel::client_proto );
 
             clnt->client->on_init_error_connect(
                 [this, point, clnt_wptr]( const verrs::container &errs,

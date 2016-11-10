@@ -23,6 +23,8 @@
 #include "common/utilities.h"
 #include "common/net-ifaces.h"
 
+#include "lowlevel-protocol-server.h"
+
 #define LOG(lev) log_(lev, "listener")
 #define LOGINF   LOG(logger_impl::level::info)
 #define LOGDBG   LOG(logger_impl::level::debug)
@@ -572,6 +574,8 @@ namespace {
 
                 LOGINF << "Adding "      << quote(point)
                        << " for device " << quote(dev);
+
+                res->assign_lowlevel_protocol_factory( lowlevel::server_proto );
 
                 res->on_start_connect(
                     [this, srv_info](  ) {
