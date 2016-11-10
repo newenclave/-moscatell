@@ -25,24 +25,26 @@ namespace msctl { namespace agent { namespace lowlevel {
         using call_ptr    = stages_list::iterator;
         using error_code  = VTRC_SYSTEM::error_code;
 
-        std::string first_message( )
-        {
-            rpc::ll::hello mess;
-
-            mess.set_hello_message( "Tervetuloa! Hola el meu amic!" );
-
-            auto res = mess.SerializeAsString( );
-            return std::move(res);
-        }
-
         struct impl: public vcomm::lowlevel::default_protocol {
             application  *app_;
             logger_impl  &log_;
-
-            impl( application *app )
+            server_proto_option opts_;
+            impl( application *app, const server_proto_option &opts )
                 :app_(app)
                 ,log_(app->log( ))
+                ,opts_(opts)
             { }
+
+            std::string first_message( )
+            {
+                rpc::ll::hello mess;
+
+                mess.set_hello_message( opts_.hello_message );
+                //mess.set_hello_message( "Tervetuloa! Hola el meu amic!" );
+
+                auto res = mess.SerializeAsString( );
+                return std::move(res);
+            }
 
             /// on_success
             ///     true:  call after  write
@@ -81,9 +83,10 @@ namespace msctl { namespace agent { namespace lowlevel {
         };
     }
 
-    vtrc::common::lowlevel::protocol_layer_iface *server_proto( application *a )
+    vtrc::common::lowlevel::protocol_layer_iface *server_proto( application *a,
+                                           const server_proto_option &opts )
     {
-        return new impl( a );
+        return new impl( a, opts );
     }
 
 }}}

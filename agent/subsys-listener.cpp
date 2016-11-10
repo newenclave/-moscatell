@@ -583,36 +583,36 @@ namespace {
                 LOGINF << "Adding "      << quote(point)
                        << " for device " << quote(dev);
 
+                auto inf_ptr = std::make_shared<server_create_info>( srv_info);
+
                 res->assign_lowlevel_protocol_factory(
-                    [this]( ) {
-                        return lowlevel::server_proto( app_ );
+                    [this, inf_ptr]( ) {
+                        return lowlevel::server_proto( app_, inf_ptr->ll_opts );
                     } );
 
                 res->on_start_connect(
-                    [this, srv_info](  ) {
-                        this->on_start( srv_info );
+                    [this, inf_ptr](  ) {
+                        this->on_start( *inf_ptr );
                     } );
 
                 res->on_stop_connect (
-                    [this, srv_info](  ) {
-                        this->on_stop( srv_info );
+                    [this, inf_ptr](  ) {
+                        this->on_stop( *inf_ptr );
                     } );
 
-                auto info_ptr = std::make_shared<server_create_info>( srv_info);
-
                 res->on_accept_failed_connect(
-                    [this, info_ptr]( const VTRC_SYSTEM::error_code &err ) {
-                        this->on_accept_failed( err, info_ptr );
+                    [this, inf_ptr]( const VTRC_SYSTEM::error_code &err ) {
+                        this->on_accept_failed( err, inf_ptr );
                     } );
 
                 res->on_new_connection_connect(
-                    [this, info_ptr]( vcomm::connection_iface *c ) {
-                        this->on_new_connection( c, info_ptr );
+                    [this, inf_ptr]( vcomm::connection_iface *c ) {
+                        this->on_new_connection( c, inf_ptr );
                     } );
 
                 res->on_stop_connection_connect(
-                    [this, info_ptr]( vcomm::connection_iface *c ) {
-                        this->on_stop_connection( c, info_ptr );
+                    [this, inf_ptr]( vcomm::connection_iface *c ) {
+                        this->on_stop_connection( c, inf_ptr );
                     } );
 
                 if( s ) {

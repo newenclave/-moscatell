@@ -6,6 +6,7 @@
 #include "vtrc-common/vtrc-signal-declaration.h"
 
 #include "common/parameter.h"
+#include "lowlevel-protocol-server.h"
 
 namespace msctl { namespace agent {
 
@@ -21,11 +22,12 @@ namespace msctl { namespace agent {
         using listener_param_map  = std::map<std::string, listener_param_sptr>;
 
         struct server_create_info {
-            std::string                point;
-            std::string                device;
-            utilities::address_v4_poll addr_poll;
-            bool                       tcp_nowait;
-            listener_param_map         params;
+            std::string                     point;
+            std::string                     device;
+            utilities::address_v4_poll      addr_poll;
+            bool                            tcp_nowait;
+            lowlevel::server_proto_option   ll_opts; /// options for lowlevel
+            listener_param_map              params;
         };
 
         struct register_info {

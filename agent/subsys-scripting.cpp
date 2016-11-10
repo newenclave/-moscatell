@@ -282,10 +282,12 @@ namespace msctl { namespace agent {
 
                 table_wrap tw(L, svc);
 
-                inf.point       = tw["addr"].as_string( );
-                inf.device      = tw["dev"].as_string( );
+                inf.point                 = tw["addr"].as_string( );
+                inf.device                = tw["dev"].as_string( );
+                inf.tcp_nowait            = tw["tcp_nowait"].as_bool( true );
+                inf.ll_opts.hello_message = tw["txt.hello"].as_string( );
+
                 auto addr_poll  = tw["addr_poll"].as_string( );
-                inf.tcp_nowait  = tw["tcp_nowait"].as_bool( true );
 
                 auto on_del = tw["on_disconnect"].as_object();
                 auto on_reg = tw["on_register"].as_object();

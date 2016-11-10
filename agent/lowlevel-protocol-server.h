@@ -7,7 +7,12 @@
 
 namespace msctl { namespace agent { namespace lowlevel {
 
-    vtrc::common::lowlevel::protocol_layer_iface *server_proto( application * );
+    struct server_proto_option {
+        std::string hello_message;
+    };
+
+    vtrc::common::lowlevel::protocol_layer_iface *server_proto( application *a,
+                                            const server_proto_option &opts );
 
 }}}
 
