@@ -691,6 +691,8 @@ namespace msctl { namespace agent {
 
             add_client_to_table( res, c );
 
+            res.add( "device", new_string( inf.device ) );
+
             call_event( "on_disconnect", inf.params, res );
         }
 

@@ -231,7 +231,6 @@ namespace {
                         LOGWRN << "Keep alive timer...Client disconnected.";
                         lck->disconnect( );
                     } else {
-                        //LOGDBG << "Keep alive timer...Pinging server...";
                         device_->ping( );
                         start_timer( 30 );
                     }
