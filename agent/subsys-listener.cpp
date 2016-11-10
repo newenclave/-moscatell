@@ -558,8 +558,8 @@ namespace {
         {
             using namespace vserv::listeners;
 
-            auto &point(srv_info.point);
-            auto &dev(srv_info.device);
+            auto &point( srv_info.point);
+            auto &dev( srv_info.device );
 
             auto inf = utilities::get_endpoint_info( point );
             vserv::listener_sptr res;
