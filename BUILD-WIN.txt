@@ -1,0 +1,13 @@
+rem build.cmd 
+rem 
+
+cmake -DBUILD_RTYPE=Relese -Wno-dev ^
+	-DBOOST_ROOT="C:/SDK/boost/boost_1_62_0" ^
+	-DPROTOBUF_INCLUDE_DIR="C:/SDK/ProtoBuf/ProtoBuf_2.6.1/src" ^
+	-DProtobuf_INCLUDE_DIR="C:/SDK/ProtoBuf/ProtoBuf_2.6.1/src" ^
+	-DPROTOBUF_LIBRARY_DEBUG="C:/SDK/ProtoBuf/ProtoBuf_2.6.1/lib/libprotobuf-vc140-mt-sgd.lib" ^
+	-DPROTOBUF_LIBRARY="C:/SDK/ProtoBuf/ProtoBuf_2.6.1/lib/libprotobuf-vc140-mt-s.lib" ^
+	-DPROTOBUF_PROTOC_EXECUTABLE="C:/SDK/ProtoBuf/ProtoBuf_2.6.1/bin/protoc.exe" ^
+	../moscatell
+
+

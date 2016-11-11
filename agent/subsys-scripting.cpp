@@ -73,7 +73,8 @@ namespace msctl { namespace agent {
             mlua::state ls(L);
             auto cmd = ls.get_opt<std::string>( );
 #ifdef _WIN32
-            using namespace utilities::charset;
+            using utilities::charset::make_ws_string;
+            using utilities::charset::make_mb_string;
             /// convert string from utf8 to win locale
             cmd = make_mb_string( make_ws_string( cmd ) );
 #endif
