@@ -100,7 +100,7 @@ namespace {
 
         std::shared_ptr<listener::server_create_info> create_inf_;
 
-        public:
+    public:
 
         using route_map = std::map<ba::ip::address, server_wrapper>;
         using parent_type = common::tuntap_transport;
