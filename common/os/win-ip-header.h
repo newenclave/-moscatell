@@ -18,24 +18,24 @@ typedef struct iphdr
 # error "Your systems ENDIANNESS is broken, please fix!"
 #endif
 
-    unsigned char  tos;           // IP type of service
-    unsigned short tot_len;       // Total length
-    unsigned short id;            // Unique identifier
-    unsigned short offset;        // Fragment offset field
-    unsigned char  ttl;           // Time to live
-    unsigned char  protocol;      // Protocol(TCP,UDP etc)
-    unsigned short check;         // IP checksum
-    unsigned int   saddr;         // Source address
-    unsigned int   daddr;         // Source address
+    std::uint8_t    tos;           // IP type of service
+    std::uint16_t   tot_len;       // Total length
+    std::uint16_t   id;            // Unique identifier
+    std::uint16_t   offset;        // Fragment offset field
+    std::uint8_t    ttl;           // Time to live
+    std::uint8_t    protocol;      // Protocol(TCP,UDP etc)
+    std::uint16_t   check;         // IP checksum
+    std::uint32_t   saddr;         // Source address
+    std::uint32_t   daddr;         // Source address
 } IPV4_HDR, *PIPV4_HDR, FAR *LPIPV4_HDR;
 
 // IPv4 option header
 typedef struct ipv4_option_hdr
 {
-    unsigned char   opt_code;           // option type
-    unsigned char   opt_len;            // length of the option header
-    unsigned char   opt_ptr;            // offset into options
-    unsigned long   opt_addr[9];        // list of IPv4 addresses
+    std::uint8_t   opt_code;           // option type
+    std::uint8_t   opt_len;            // length of the option header
+    std::uint8_t   opt_ptr;            // offset into options
+    std::uint32_t  opt_addr[9];        // list of IPv4 addresses
 } IPV4_OPTION_HDR, *PIPV4_OPTION_HDR, FAR *LPIPV4_OPTION_HDR;
 
 // ICMPv6 echo request body
@@ -43,32 +43,32 @@ typedef struct icmpv6_echo_request
 {
     struct
     {
-        unsigned short  id;
-        unsigned short  sequence;
+        std::uint16_t  id;
+        std::uint16_t  sequence;
     } echo;
 } ICMPV6_ECHO_REQUEST;
 
 // ICMP header
 typedef struct icmphdr
 {
-    unsigned char   type;
-    unsigned char   code;
-    unsigned short  checksum;
-    unsigned short  id;
-    unsigned short  sequence;
-    unsigned long   timestamp;
+    std::uint8_t   type;
+    std::uint8_t   code;
+    std::uint16_t  checksum;
+    std::uint16_t  id;
+    std::uint16_t  sequence;
+    std::uint32_t  timestamp;
     icmpv6_echo_request un;
 } ICMP_HDR, *PICMP_HDR, FAR *LPICMP_HDR;
 
 // IPv6 protocol header
 typedef struct ipv6_hdr
 {
-    unsigned long   ipv6_vertcflow;        // 4-bit IPv6 version
-    // 8-bit traffic class
-    // 20-bit flow label
-    unsigned short  ipv6_payloadlen;       // payload length
-    unsigned char   ipv6_nexthdr;          // next header protocol value
-    unsigned char   ipv6_hoplimit;         // TTL
+    std::uint32_t   ipv6_vertcflow;        // 4-bit IPv6 version
+                                           // 8-bit traffic class
+                                           // 20-bit flow label
+    std::uint16_t   ipv6_payloadlen;       // payload length
+    std::uint8_t    ipv6_nexthdr;          // next header protocol value
+    std::uint8_t    ipv6_hoplimit;         // TTL
     struct in6_addr ipv6_srcaddr;          // Source address
     struct in6_addr ipv6_destaddr;         // Destination address
 } IPV6_HDR, *PIPV6_HDR, FAR *LPIPV6_HDR;
@@ -76,27 +76,27 @@ typedef struct ipv6_hdr
 // IPv6 fragment header
 typedef struct ipv6_fragment_hdr
 {
-    unsigned char   ipv6_frag_nexthdr;
-    unsigned char   ipv6_frag_reserved;
-    unsigned short  ipv6_frag_offset;
-    unsigned long   ipv6_frag_id;
+    std::uint8_t   ipv6_frag_nexthdr;
+    std::uint8_t   ipv6_frag_reserved;
+    std::uint16_t  ipv6_frag_offset;
+    std::uint32_t  ipv6_frag_id;
 } IPV6_FRAGMENT_HDR, *PIPV6_FRAGMENT_HDR, FAR *LPIPV6_FRAGMENT_HDR;
 
 // ICMPv6 header
 typedef struct icmpv6_hdr
 {
-    unsigned char   icmp6_type;
-    unsigned char   icmp6_code;
-    unsigned short  icmp6_checksum;
+    std::uint8_t   icmp6_type;
+    std::uint8_t   icmp6_code;
+    std::uint16_t  icmp6_checksum;
 } ICMPV6_HDR;
 
 // Define the UDP header
 typedef struct udp_hdr
 {
-    unsigned short src_portno;       // Source port no.
-    unsigned short dst_portno;       // Dest. port no.
-    unsigned short udp_length;       // Udp packet length
-    unsigned short udp_checksum;     // Udp checksum (optional)
+    std::uint16_t src_portno;       // Source port no.
+    std::uint16_t dst_portno;       // Dest. port no.
+    std::uint16_t udp_length;       // Udp packet length
+    std::uint16_t udp_checksum;     // Udp checksum (optional)
 } UDP_HDR, *PUDP_HDR;
 
 #define IP_RECORD_ROUTE     0x7

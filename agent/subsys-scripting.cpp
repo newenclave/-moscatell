@@ -84,9 +84,9 @@ namespace msctl { namespace agent {
         void register_globals( mlua::state ls )
         {
             ls.openlib( "base" );
-			ls.openlib( "string" );
-			ls.openlib( "table" );
-			ls.openlib( "math" );
+            ls.openlib( "string" );
+            ls.openlib( "table" );
+            ls.openlib( "math" );
             ls.openlib( "utf8" );
             ls.register_call( "print", &lcall_log_print );
             ls.register_call( "shell", &lcall_system );
