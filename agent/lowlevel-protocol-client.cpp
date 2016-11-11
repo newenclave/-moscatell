@@ -5,6 +5,8 @@
 
 #include "vtrc-system.h"
 
+#include "common/utilities.h"
+
 #define LOG(lev) log_(lev, "protoC")
 #define LOGINF   LOG(logger_impl::level::info)
 #define LOGDBG   LOG(logger_impl::level::debug)
@@ -19,6 +21,8 @@ namespace msctl { namespace agent { namespace lowlevel {
 
         using protocol_accessor   = vcomm::protocol_accessor;
         using system_closure_type = vcomm::system_closure_type;
+
+        using utilities::decorators::quote;
 
         using void_call   = std::function<void(std::string)>;
         using stages_list = std::vector<void_call>;
@@ -47,7 +51,7 @@ namespace msctl { namespace agent { namespace lowlevel {
             {
                 rpc::ll::hello mess;
                 mess.ParseFromString( data );
-                LOGINF << "Hello recv: " << mess.DebugString( );
+                LOGINF << "Hello recv: " << quote(mess.hello_message( ));
                 accessor( )->ready( true );
                 switch_to_ready( );
             }

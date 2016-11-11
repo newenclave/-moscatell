@@ -180,18 +180,17 @@ namespace msctl { namespace agent {
         };
 
         void add_call( param_map& store, lua_State *state,
-                        const std::string &name, objects::base_sptr call )
+                        const std::string &name, objects::base_sptr obj )
         {
-            if( call ) {
-                bool is_func =
-                    ( call->type_id( ) == objects::base::TYPE_FUNCTION)
-                 || ( call->type_id( ) == ( objects::base::TYPE_FUNCTION
-                                          | objects::base::TYPE_REFERENCE ) );
 
-                if( is_func ) {
+            if( obj ) {
+
+                bool func = ( obj->type_id( ) == objects::base::TYPE_FUNCTION );
+
+                if( func ) {
                     auto par = std::make_shared<event_callback>( );
                     par->state = state;
-                    par->call  = call;
+                    par->call  = obj;
                     store[name] = par;
                 }
             }

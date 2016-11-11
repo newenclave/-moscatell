@@ -55,8 +55,8 @@ namespace lua { namespace objects {
             case TYPE_UINTEGER:
                 return "uinteger";
 #endif
-            case TYPE_REFERENCE:
-                return "reference";
+            case TYPE_REF:
+                return "ref";
             }
             return "unknown";
         }
@@ -78,7 +78,8 @@ namespace lua { namespace objects {
 #if LUA_VERSION_NUM >=503
             ,TYPE_UINTEGER      = TYPE_LOCAL_INDEX + 3
 #endif
-            ,TYPE_REFERENCE     = 0x08000000
+            ,TYPE_REF           = 0x01000000
+            ,TYPE_UNREF         = 0x00FFFFFF
         };
 
         virtual ~base( ) { }
@@ -93,14 +94,14 @@ namespace lua { namespace objects {
             return false;
         }
 
-        bool is_reference( ) const
+        virtual bool is_reference( ) const
         {
-            return TYPE_REFERENCE == (type_id( ) & TYPE_REFERENCE);
+            return false;
         }
 
         static bool is_reference( const base *o )
         {
-            return TYPE_REFERENCE == (o->type_id( ) & TYPE_REFERENCE);
+            return o->is_reference( );
         }
 
         virtual base * clone( ) const = 0;
@@ -826,13 +827,13 @@ namespace lua { namespace objects {
         reference( lua_State *state, int index )
             :state_(state)
             ,ref_(create_ref( state, index ))
-            ,type_(lua_type( state, index ) | base::TYPE_REFERENCE)
+            ,type_(lua_type( state, index ) | base::TYPE_REF)
         { }
 
         reference( lua_State *state, const base *obj )
             :state_(state)
             ,ref_(create_ref( state, obj ))
-            ,type_(lua_type( state, obj->type_id( ) ) | base::TYPE_REFERENCE)
+            ,type_(lua_type( state, obj->type_id( ) ) | base::TYPE_REF)
         { }
 
         reference( lua_State *state, int /*index*/, int ref )
@@ -847,7 +848,12 @@ namespace lua { namespace objects {
 
         int type_id( ) const
         {
-            return type_;
+            return type_ & base::TYPE_UNREF;
+        }
+
+        bool is_reference( ) const
+        {
+            return true;
         }
 
         virtual base *clone( ) const
@@ -867,7 +873,7 @@ namespace lua { namespace objects {
         std::string str( ) const
         {
             std::ostringstream oss;
-            oss << base::type2string( type_ & ~base::TYPE_REFERENCE )
+            oss << base::type2string( type_ & ~base::TYPE_REF )
                 << "@" << std::hex << state_ << ":" << ref_;
             return oss.str( );
         }
