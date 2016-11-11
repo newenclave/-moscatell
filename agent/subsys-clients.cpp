@@ -401,7 +401,7 @@ namespace {
 
                     parent_->get_on_client_register( )( c, *dev_hint, reginfo );
 
-                    LOGINF << "Device setup success.";
+                    LOGINF << "Device " << quote(dev) << " setup success.";
 
                 } catch( const std::exception &ex ) {
                     LOGERR << "Client failed to register: " << ex.what( );

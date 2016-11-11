@@ -5,6 +5,7 @@
 //#include <windows.h>
 //#include <ntstatus.h>
 #include <winnt.h>
+#include <tchar.h>
 
 namespace utilities {
 

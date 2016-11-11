@@ -73,10 +73,9 @@ namespace msctl { namespace agent {
             mlua::state ls(L);
             auto cmd = ls.get_opt<std::string>( );
 #ifdef _WIN32
-            using utilities::charset::make_ws_string;
-            using utilities::charset::make_mb_string;
+            using cs = utilities::charset;
             /// convert string from utf8 to win locale
-            cmd = make_mb_string( make_ws_string( cmd ) );
+            cmd = cs::make_mb_string( cs::make_ws_string( cmd ) );
 #endif
             ls.push( ::system( cmd.c_str( ) ) );
             return 1;
@@ -85,8 +84,9 @@ namespace msctl { namespace agent {
         void register_globals( mlua::state ls )
         {
             ls.openlib( "base" );
-            ls.openlib( "string" );
-            ls.openlib( "math" );
+			ls.openlib( "string" );
+			ls.openlib( "table" );
+			ls.openlib( "math" );
             ls.openlib( "utf8" );
             ls.register_call( "print", &lcall_log_print );
             ls.register_call( "shell", &lcall_system );
