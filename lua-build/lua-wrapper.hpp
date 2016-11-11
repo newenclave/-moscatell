@@ -354,6 +354,12 @@ namespace lua {
             return new_table;
         }
 
+        objects::base_sptr get_reference( int idx = -1 )
+        {
+            typedef objects::base_sptr base_sptr;
+            return base_sptr( new objects::reference( vm_, idx ) );
+        }
+
         objects::base_sptr get_object( int idx = -1, unsigned flags = 0 )
         {
 
@@ -377,9 +383,8 @@ namespace lua {
                     const char *ptr = lua_tolstring( vm_, idx, &length );
                     return base_sptr(new objects::string( ptr, length ));
                 }
-            case LUA_TFUNCTION: {
-                return base_sptr(new objects::reference( vm_, idx ));
-            }
+            case LUA_TFUNCTION:
+                 return base_sptr(new objects::reference( vm_, idx ));
             case LUA_TTABLE:
                 return get_table( idx, flags );
             case LUA_TTHREAD:

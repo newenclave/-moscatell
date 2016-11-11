@@ -436,8 +436,8 @@ namespace msctl { namespace agent {
                 inf.tcp_nowait = tw["tcp_nowait"].as_bool( true );
                 inf.id         = tw["id"].as_string( );
 
-                auto on_reg = tw["on_register"].as_object( );
-                auto on_dis = tw["on_disconnect"].as_object( );
+                auto on_reg    = tw["on_register"].as_object( );
+                auto on_dis    = tw["on_disconnect"].as_object( );
 
                 add_call( inf.params, L, "on_register",   on_reg );
                 add_call( inf.params, L, "on_disconnect", on_dis );
