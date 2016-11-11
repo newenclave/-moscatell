@@ -131,7 +131,7 @@ namespace {
             auto srcdst = common::extract_ip_v4( data, length );
             if( srcdst.second ) {
 
-                std::cerr << std::hex << (srcdst.second & 0xFF000000) << "\n";
+                //std::cerr << std::hex << (srcdst.second & 0xFF000000) << "\n";
 
                 if( utilities::ipv4::is_multicast( ntohl( srcdst.second ) ) ) {
                     for( auto &r: routes_ ) {
