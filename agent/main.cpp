@@ -219,14 +219,14 @@ int main( int argc, const char **argv )
             try {
                 throw;
             } catch( const std::exception &ex ) {
-                app.log( )( lvl::error, agent::thread_prefix::get( ) )
-                        << "[poll] Exception @" << std::hex
+                app.log( )( lvl::error, agent::thread_prefix::get( ), "poll" )
+                        << "[!] Exception @" << std::hex
                         << std::this_thread::get_id( )
                         << "; " << ex.what( )
                         ;
             } catch( ... ) {
-                app.log( )( lvl::error, agent::thread_prefix::get( ) )
-                        << "[poll] Exception @" << std::hex
+                app.log( )( lvl::error, agent::thread_prefix::get( ), "poll" )
+                        << "[!] Exception @" << std::hex
                         << std::this_thread::get_id( )
                         << "; ..."
                         ;
