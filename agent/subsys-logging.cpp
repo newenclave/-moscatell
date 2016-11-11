@@ -29,6 +29,8 @@
 #include "protocol/logger.pb.h"
 #include "protocol/moscatell.pb.h"
 
+#include "boost/date_time/posix_time/posix_time.hpp"
+
 #define LOG(lev) log_(lev, "log")
 #define LOGINF   LOG(loglevel::info)
 #define LOGDBG   LOG(loglevel::debug)
@@ -654,6 +656,21 @@ namespace msctl { namespace agent {
             }
         }
 
+        void write_log_header( log_output &out )
+        {
+            log_record_info inf;
+            inf.tprefix = "!";
+            inf.level   = static_cast<int>(logger_impl::level::zero);
+            inf.when    = bpt::microsec_clock::local_time( );
+            inf.tid     = std::this_thread::get_id( );
+            inf.name    = "log";
+            stringlist data;
+            data.push_back( "=========================" );
+            data.push_back( "Starting..." );
+            data.push_back( "=========================" );
+            out.write( inf, data );
+        }
+
         /// dispatcher!
         void add_logger( const std::string &path, loglevel minl, loglevel maxl )
         {
@@ -680,6 +697,8 @@ namespace msctl { namespace agent {
                 syslog_ = true;
             }
 #endif
+            write_log_header( *conn.output_ );
+
             conn.connection_ = log_.on_write_connect(
                         std::bind( &impl::log_output_slot, this,
                                    conn.output_.get( ),
