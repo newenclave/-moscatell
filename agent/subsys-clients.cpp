@@ -475,7 +475,8 @@ namespace {
             if( working_ ) {
                 auto c = wc.lock( );
                 if( c ) {
-                    LOGINF << "Client is ready for device "
+                    LOGINF << "Client '" << c->info
+                           << "' is ready for device "
                            << quote(c->device)
                               ;
                     app_->get_rpc_service( ).post( [this, c, inf]( ) {
@@ -495,9 +496,9 @@ namespace {
 
             auto create_info = std::make_shared<client_create_info>( add_info );
 
-            auto inf  = utilities::get_endpoint_info( add_info.point );
-            auto clnt = client_info::create( app_ );
-            clnt->device = dev;
+            auto inf       = utilities::get_endpoint_info( add_info.point );
+            auto clnt      = client_info::create( app_ );
+            clnt->device   = dev;
             auto clnt_wptr = std::weak_ptr<client_info>( clnt );
 
             clnt->client->set_session_id( add_info.id );
@@ -509,7 +510,7 @@ namespace {
 
             clnt->client->on_init_error_connect(
                 [this, point, clnt_wptr]( const verrs::container &errs,
-                               const char *mesg )
+                                          const char *mesg )
                 {
                     this->on_init_error( errs, mesg, clnt_wptr, point );
                 } );
