@@ -14,7 +14,7 @@
 #include "boost/algorithm/string.hpp"
 
 
-#define LOG(lev) log_(lev, "scripting") 
+#define LOG(lev) log_(lev, "script")
 #define LOGINF   LOG(logger_impl::level::info)
 #define LOGDBG   LOG(logger_impl::level::debug)
 #define LOGERR   LOG(logger_impl::level::error)

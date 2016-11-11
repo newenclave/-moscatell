@@ -37,8 +37,8 @@ namespace {
     void add_all( agent::application *app )
     {
         using namespace msctl::agent;
-        app->subsys_add<scripting>( );
         app->subsys_add<logging>( );
+        app->subsys_add<scripting>( );
         app->subsys_add<listener>( );
         app->subsys_add<clients>( );
         app->subsys_add<tuntap>( );
