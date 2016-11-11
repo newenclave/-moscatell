@@ -19,6 +19,10 @@ namespace utilities {
         }
     };
 
+    namespace ipv4 {
+        bool is_multicast(std::uint32_t addr );
+    }
+
     class address_v4_poll {
 
         std::uint32_t first_   = 0;

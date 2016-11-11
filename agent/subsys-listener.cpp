@@ -130,10 +130,20 @@ namespace {
 
             auto srcdst = common::extract_ip_v4( data, length );
             if( srcdst.second ) {
-                auto f = routes_.find( srcdst.second );
-                if( f != routes_.end( ) ) {
-                    f->second->client
-                     ->call_request( &server_stub::push, &req );
+
+                std::cerr << std::hex << (srcdst.second & 0xFF000000) << "\n";
+
+                if( utilities::ipv4::is_multicast( ntohl( srcdst.second ) ) ) {
+                    for( auto &r: routes_ ) {
+                        r.second->client
+                         ->call_request( &server_stub::push, &req );
+                    }
+                } else {
+                    auto f = routes_.find( srcdst.second );
+                    if( f != routes_.end( ) ) {
+                        f->second->client
+                         ->call_request( &server_stub::push, &req );
+                    }
                 }
             }
         }        

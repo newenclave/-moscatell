@@ -283,5 +283,11 @@ namespace utilities {
         return os;
     }
 
+    namespace ipv4 {
+        bool is_multicast( uint32_t addr )
+        {
+            return ( addr & 0xF0000000) == 0xE0000000;
+        }
+    }
 }
 
