@@ -193,7 +193,7 @@ namespace {
                 = RegQueryValueEx( key, name.c_str( ),
                                    NULL, &dtype,
                                    reinterpret_cast<LPBYTE>(&res[0]), &len );
-        res.resize( len );
+        res.resize( len - 1 );
         return std::move( res );
     }
 
