@@ -292,8 +292,10 @@ namespace utilities {
             void _reset_check_summ( char *data, size_t hlen )
             {
                 auto words  = reinterpret_cast<std::uint16_t *>(data);
+                auto old = words[5];
                 words[5] = 0;
                 std::uint32_t res = 0;
+
                 while( hlen ) {
                     res += ntohs(*words++);
                     if( (res & 0xFFFF0000) != 0 ) {
@@ -301,6 +303,7 @@ namespace utilities {
                     }
                     hlen -= sizeof(*words);
                 }
+                words = reinterpret_cast<std::uint16_t *>(data);
                 words[5] = htons(~static_cast<std::uint16_t>(res & 0xFFFF));
             }
         }
@@ -332,7 +335,9 @@ namespace utilities {
             if( len < hlen ) {
                 return false;
             }
-            bytes[16] += diff;
+//            std::cerr << "Ttl: " << (int)bytes[8]
+//                      << " diff: " << diff << "'\n";
+            bytes[8] += diff;
             _reset_check_summ( data, hlen );
             return true;
         }

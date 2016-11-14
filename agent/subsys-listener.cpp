@@ -415,10 +415,10 @@ namespace {
             vcomm::closure_holder done_holder( done );
 
             auto data = request->value( );
-            //uip::fix_ttl( &data[0], data.size( ), -1 );
+            uip::fix_ttl( &data[0], data.size( ), -1 );
 
             device_->transport
-                   ->write_post_notify( request->value( ),
+                   ->write_post_notify( data,
                      [ ](const boost::system::error_code &err)
                      {
                          if( err ) {

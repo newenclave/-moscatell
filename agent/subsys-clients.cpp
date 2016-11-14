@@ -162,7 +162,7 @@ namespace {
         void on_read( char *data, size_t length ) override
         {
             if( common::extract_family( data, length ) == 4 ) {
-                utilities::ip::fix_ttl( data, length, +1 );
+                // utilities::ip::fix_ttl( data, length, +1 );
                 rpc::tuntap::push_req req;
                 req.set_value( data, length );
                 client_.call_request( &client_stub::push, &req );
