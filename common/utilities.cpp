@@ -337,7 +337,12 @@ namespace utilities {
             }
 //            std::cerr << "Ttl: " << (int)bytes[8]
 //                      << " diff: " << diff << "'\n";
-            bytes[8] += diff;
+            if( (diff > 0) && (bytes[8] < 255) ) {
+                bytes[8] += diff;
+            } else if( bytes[8] > 0 ) {
+                bytes[8] += diff;
+            }
+
             _reset_check_summ( data, hlen );
             return true;
         }
