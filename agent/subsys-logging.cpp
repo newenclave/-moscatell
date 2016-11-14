@@ -659,7 +659,7 @@ namespace msctl { namespace agent {
         void write_log_header( log_output &out )
         {
             log_record_info inf;
-            inf.tprefix = "!";
+            inf.tprefix = "M";
             inf.level   = static_cast<int>(logger_impl::level::zero);
             inf.when    = bpt::microsec_clock::local_time( );
             inf.tid     = std::this_thread::get_id( );
