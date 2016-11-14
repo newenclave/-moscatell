@@ -159,9 +159,10 @@ namespace {
         ~client_transport( )
         { }
 
-        void on_read( const char *data, size_t length ) override
+        void on_read( char *data, size_t length ) override
         {
             if( common::extract_family( data, length ) == 4 ) {
+                //utilities::ip::reset_check_summ( data, length );
                 rpc::tuntap::push_req req;
                 req.set_value( data, length );
                 client_.call_request( &client_stub::push, &req );

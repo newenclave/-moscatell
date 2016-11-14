@@ -19,8 +19,15 @@ namespace utilities {
         }
     };
 
-    namespace ipv4 {
-        bool is_multicast(std::uint32_t addr );
+    namespace ip {
+
+        bool reset_check_summ( char *data, size_t len );
+        bool fix_ttl( char *data, size_t len, int diff );
+
+        namespace v4 {
+            bool is_multicast(std::uint32_t addr );
+        }
+
     }
 
     class address_v4_poll {

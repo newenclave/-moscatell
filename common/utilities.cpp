@@ -2,8 +2,11 @@
 #include <stdexcept>
 #include <stdlib.h>
 #include <limits.h>
+#include <iostream>
 
 #include "utilities.h"
+
+#include "boost/asio/ip/address.hpp"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -283,11 +286,57 @@ namespace utilities {
         return os;
     }
 
-    namespace ipv4 {
-        bool is_multicast( uint32_t addr )
-        {
-            return ( addr & 0xF0000000) == 0xE0000000;
+    namespace ip {
+
+        namespace {
+            void _reset_check_summ( char *data, size_t hlen )
+            {
+                auto words  = reinterpret_cast<std::uint16_t *>(data);
+                words[5] = 0;
+                std::uint32_t res = 0;
+                while( hlen ) {
+                    res += ntohs(*words++);
+                    if( (res & 0xFFFF0000) != 0 ) {
+                        res = ( res >> 16 ) + ( res & 0xFFFF );
+                    }
+                    hlen -= sizeof(*words);
+                }
+                words[5] = htons(~static_cast<std::uint16_t>(res & 0xFFFF));
+            }
         }
+
+        namespace v4 {
+            bool is_multicast( uint32_t addr )
+            {
+                return ( addr & 0xF0000000) == 0xE0000000;
+            }
+        }
+
+        bool reset_check_summ(char *data, size_t len)
+        {
+            auto bytes  = reinterpret_cast<std::uint8_t *>(data);
+            size_t hlen = (bytes[0] & 0xF) * 4;
+
+            if( len < hlen ) {
+                return false;
+            }
+            _reset_check_summ( data, hlen );
+            return true;
+        }
+
+        bool fix_ttl(char *data, size_t len, int diff)
+        {
+            auto bytes  = reinterpret_cast<std::uint8_t *>(data);
+            size_t hlen = (bytes[0] & 0xF) * 4;
+
+            if( len < hlen ) {
+                return false;
+            }
+            bytes[16] += diff;
+            _reset_check_summ( data, hlen );
+            return true;
+        }
+
     }
 }
 

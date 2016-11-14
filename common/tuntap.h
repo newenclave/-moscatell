@@ -130,6 +130,7 @@ namespace msctl { namespace common {
 
     src_dest_v4 iface_v4_addr( const std::string &device );
 
+
 }}
 
 #endif // TUNTAP_H

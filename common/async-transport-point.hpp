@@ -301,7 +301,7 @@ namespace msctl { namespace async_transport {
 
     private:
 
-        virtual void on_read( const char *data, size_t length ) = 0;
+        virtual void on_read( char *data, size_t length ) = 0;
 
         virtual void on_read_error( const boost::system::error_code &/*code*/ )
         { }

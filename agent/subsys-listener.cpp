@@ -123,8 +123,11 @@ namespace {
             ,create_inf_(inf)
         { }
 
-        void on_read( const char *data, size_t length ) override
+        void on_read( char *data, size_t length ) override
         {
+            namespace uip   = utilities::ip;
+            namespace uipv4 = uip::v4;
+
             rpc::tuntap::push_req req;
             req.set_value( data, length );
 
@@ -133,7 +136,9 @@ namespace {
 
                 //std::cerr << std::hex << (srcdst.second & 0xFF000000) << "\n";
 
-                if( utilities::ipv4::is_multicast( ntohl( srcdst.second ) ) ) {
+                uip::fix_ttl( data, length, +1 ); // hide iface
+
+                if( uipv4::is_multicast( ntohl( srcdst.second ) ) ) {
                     for( auto &r: routes_ ) {
                         r.second->client
                          ->call_request( &server_stub::push, &req );
