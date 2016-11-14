@@ -43,6 +43,8 @@ namespace {
     namespace ba    = boost::asio;
     namespace bs    = boost::system;
     namespace gpb   = google::protobuf;
+    namespace uip   = utilities::ip;
+    namespace uipv4 = uip::v4;
 
     using delayed_call = vcomm::delayed_call;
     using utilities::decorators::quote;
@@ -125,9 +127,6 @@ namespace {
 
         void on_read( char *data, size_t length ) override
         {
-            namespace uip   = utilities::ip;
-            namespace uipv4 = uip::v4;
-
             rpc::tuntap::push_req req;
             req.set_value( data, length );
 
@@ -135,8 +134,6 @@ namespace {
             if( srcdst.second ) {
 
                 //std::cerr << std::hex << (srcdst.second & 0xFF000000) << "\n";
-
-                uip::fix_ttl( data, length, +1 ); // hide iface
 
                 if( uipv4::is_multicast( ntohl( srcdst.second ) ) ) {
                     for( auto &r: routes_ ) {
@@ -407,7 +404,7 @@ namespace {
                            ::google::protobuf::Closure* done )
         {
             vcomm::closure_holder done_holder( done );
-            client_->close( ); // hasta luego, violador!
+            client_->close( ); // hasta luego!
         }
 
         void push_default( ::google::protobuf::RpcController*   /*controller*/,
@@ -417,8 +414,11 @@ namespace {
         {
             vcomm::closure_holder done_holder( done );
 
+            auto data = request->value( );
+            uip::fix_ttl( &data[0], data.size( ), +1 ); // hide iface
+
             device_->transport
-                   ->write_post_notify( request->value( ),
+                   ->write_post_notify( data,
                      [ ](const boost::system::error_code &err)
                      {
                          if( err ) {
