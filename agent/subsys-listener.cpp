@@ -418,7 +418,7 @@ namespace {
             //uip::fix_ttl( &data[0], data.size( ), -1 );
 
             device_->transport
-                   ->write_post_notify( data,
+                   ->write_post_notify( request->value( ),
                      [ ](const boost::system::error_code &err)
                      {
                          if( err ) {
