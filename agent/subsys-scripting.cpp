@@ -483,11 +483,11 @@ namespace msctl { namespace agent {
                 auto ios = tw["io"].as_uint32( );
                 auto rpc = tw["rpc"].as_uint32( );
 
-                if( ios < 1 ) ios = 1;
-                if( rpc < 1 ) rpc = 1;
+                if( ios < 1 )  { ios =  1; }
+                if( rpc < 1 )  { rpc =  1; }
 
-                if( ios > 20 ) ios = 20;
-                if( rpc > 20 ) rpc = 20;
+                if( ios > 20 ) { ios = 20; }
+                if( rpc > 20 ) { rpc = 20; }
 
                 LOGDBG << "Got polls values: " << svc->str( );
 
