@@ -665,9 +665,9 @@ namespace msctl { namespace agent {
             inf.tid     = std::this_thread::get_id( );
             inf.name    = "log";
             stringlist data;
-            data.push_back( "=========================" );
-            data.push_back( "Starting..." );
-            data.push_back( "=========================" );
+            data.push_back( "======================" );
+            data.push_back( " Starting new log ..." );
+            data.push_back( "======================" );
             out.write( inf, data );
         }
 
