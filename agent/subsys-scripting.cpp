@@ -13,6 +13,7 @@
 
 #include "boost/algorithm/string.hpp"
 
+#include "scripting-common.h"
 
 #define LOG(lev) log_(lev, "script")
 #define LOGINF   LOG(logger_impl::level::info)
@@ -30,6 +31,8 @@ namespace msctl { namespace agent {
 
         application *gs_application = nullptr;
 
+        struct local_id { };
+
         namespace ba        = boost::asio;
         namespace bs        = boost::system;
         namespace mlua      = msctl::lua;
@@ -41,56 +44,6 @@ namespace msctl { namespace agent {
 
         using utilities::decorators::quote;
         using param_map = std::map<std::string, utilities::parameter_sptr>;
-
-        int lcall_log_print_all( lua_State *L, logger_impl::level lvl )
-        {
-            static auto &log_(gs_application->log( ));
-
-            mlua::state ls(L);
-
-            const int n = ls.get_top( );
-            std::ostringstream oss;
-
-            oss << "[S] ";
-
-            for( int i=1; i <= n; ++i ) {
-                objects::base_sptr o(ls.get_object( i, 1 ));
-                oss << o->str( ) << ( i != n ? "\t": "" );
-            }
-
-            LOG(lvl) << oss.str( );
-
-            return 0;
-        }
-
-        int lcall_log_print( lua_State *L )
-        {
-            return lcall_log_print_all( L, logger_impl::level::debug );
-        }
-
-        int lcall_system( lua_State *L )
-        {
-            mlua::state ls(L);
-            auto cmd = ls.get_opt<std::string>( );
-#ifdef _WIN32
-            using cs = utilities::charset;
-            /// convert string from utf8 to win locale
-            cmd = cs::make_mb_string( cs::make_ws_string( cmd ) );
-#endif
-            ls.push( ::system( cmd.c_str( ) ) );
-            return 1;
-        }
-
-        void register_globals( mlua::state ls )
-        {
-            ls.openlib( "base" );
-            ls.openlib( "string" );
-            ls.openlib( "table" );
-            ls.openlib( "math" );
-            ls.openlib( "utf8" );
-            ls.register_call( "print", &lcall_log_print );
-            ls.register_call( "shell", &lcall_system );
-        }
 
         using table_wrap = mlua::object_wrapper;
 
@@ -207,9 +160,12 @@ namespace msctl { namespace agent {
 
                 inf.point                 = tw["addr"].as_string( );
                 inf.device                = tw["dev"].as_string( );
-                inf.tcp_nowait            = tw["tcp_nowait"].as_bool( true );
                 inf.max_queue             = tw["max_queue"].as_uint32( );
                 inf.ll_opts.hello_message = tw["txt.hello"].as_string( );
+
+                inf.tcp_nowait = tw["options.tcp_nowait"].as_bool( true );
+                inf.mcast      = tw["options.multicast"].as_bool( true );
+                inf.bcast      = tw["options.broadcast"].as_bool( true );
 
                 if( inf.max_queue < 5 ) inf.max_queue = 5;
 
@@ -487,12 +443,13 @@ namespace msctl { namespace agent {
             return 1;
         }
 
-        void state_init( lua_State *L )
+        void state_init( lua_State *L, application *app )
         {
             mlua::state ls(L);
             using namespace objects;
 
-            register_globals( ls );
+            scripts::lcall_set_application( L, app );
+            scripts::lcall_init_globls( L );
 
             /// set tables
             objects::table tab;
@@ -696,7 +653,7 @@ namespace msctl { namespace agent {
 
     void scripting::init( )
     {
-        state_init( impl_->state_.get_state( ) );
+        state_init( impl_->state_.get_state( ), impl_->app_ );
         impl_->init( );
     }
 

@@ -618,9 +618,6 @@ namespace msctl { namespace agent {
         void flush_all( )
         {
             for( auto &l: connections_ ) {
-//                std::cerr << l.second.output_->name( )
-//                          << ": " << l.second.output_->length( )
-//                          << "\n";
                 l.second.output_->flush( );
             }
         }
@@ -666,7 +663,7 @@ namespace msctl { namespace agent {
             inf.name    = "log";
             stringlist data;
             data.push_back( "======================" );
-            data.push_back( " Starting new log ..." );
+            data.push_back( " Starting new log ... " );
             data.push_back( "======================" );
             out.write( inf, data );
         }
