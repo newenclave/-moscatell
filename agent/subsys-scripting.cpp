@@ -30,8 +30,6 @@ namespace msctl { namespace agent {
 
         application *gs_application = nullptr;
 
-        struct local_id { };
-
         namespace ba        = boost::asio;
         namespace bs        = boost::system;
         namespace mlua      = msctl::lua;
@@ -54,23 +52,6 @@ namespace msctl { namespace agent {
                 call->push( state );
             }
         };
-
-        void add_call( param_map& store, lua_State *state,
-                        const std::string &name, objects::base_sptr obj )
-        {
-
-            if( obj ) {
-
-                bool func = ( obj->type_id( ) == objects::base::TYPE_FUNCTION );
-
-                if( func ) {
-                    auto par = std::make_shared<event_callback>( );
-                    par->state = state;
-                    par->call  = obj;
-                    store[name] = par;
-                }
-            }
-        }
 
         void add_param( param_map& store, lua_State *state,
                         const std::string &name, objects::base_sptr param )
@@ -159,23 +140,14 @@ namespace msctl { namespace agent {
 
                 inf.point                 = tw["addr"].as_string( );
                 inf.device                = tw["dev"].as_string( );
-                inf.max_queue             = tw["max_queue"].as_uint32( );
                 inf.ll_opts.hello_message = tw["txt.hello"].as_string( );
 
                 scripts::get_common_opts( tw["options"], inf.common );
 
-                inf.mcast      = tw["options.multicast"].as_bool( true );
-                inf.bcast      = tw["options.broadcast"].as_bool( true );
-
-                if( inf.max_queue < 5 ) inf.max_queue = 5;
-
                 auto addr_poll  = tw["addr_poll"].as_string( );
 
-                auto on_del = tw["on_disconnect"].as_object();
-                auto on_reg = tw["on_register"].as_object();
-
-                add_call( inf.common.params, L, "on_disconnect", on_del );
-                add_call( inf.common.params, L, "on_register", on_reg );
+                scripts::add_callback( tw, "on_register",   inf.common );
+                scripts::add_callback( tw, "on_disconnect", inf.common );
 
                 objects::table p;
                 auto param_ref = std::make_shared<objects::reference>( L, &p );
@@ -315,13 +287,9 @@ namespace msctl { namespace agent {
                 inf.device     = tw["dev"].as_string( );
                 inf.id         = tw["id"].as_string( );
 
-                scripts::get_common_opts( tw["options"], inf.common );
-
-                auto on_reg    = tw["on_register"].as_object( );
-                auto on_dis    = tw["on_disconnect"].as_object( );
-
-                add_call( inf.common.params, L, "on_register",   on_reg );
-                add_call( inf.common.params, L, "on_disconnect", on_dis );
+                scripts::get_common_opts( tw["options"],    inf.common );
+                scripts::add_callback( tw, "on_register",   inf.common );
+                scripts::add_callback( tw, "on_disconnect", inf.common );
 
                 objects::table p;
                 auto param_ref = std::make_shared<objects::reference>( L, &p );

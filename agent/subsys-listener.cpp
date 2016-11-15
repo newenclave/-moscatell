@@ -581,7 +581,7 @@ namespace {
 
             auto opts = vcomm::defaults::session_options( );
 
-            opts.set_max_active_calls( srv_info.max_queue );
+            opts.set_max_active_calls( srv_info.common.max_queue );
 
             if( inf.is_local( ) ) {
                 res = local::create( *app_, opts, inf.addpess );

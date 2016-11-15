@@ -5,6 +5,7 @@
 
 #include <map>
 #include <string>
+#include <cstdint>
 
 namespace msctl { namespace common {
 
@@ -15,7 +16,9 @@ namespace msctl { namespace common {
 
         };
         param_map params;
-        bool tcp_nowait = false;
+        bool          tcp_nowait = false;
+        std::uint32_t max_queue  = 10;
+
         direction rcv;
         direction snd;
     };

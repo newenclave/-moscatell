@@ -9,6 +9,7 @@
 #define LOGDBG   LOG(logger_impl::level::debug)
 #define LOGERR   LOG(logger_impl::level::error)
 #define LOGWRN   LOG(logger_impl::level::warning)
+
 namespace msctl { namespace agent { namespace scripts { namespace server {
 
     namespace {

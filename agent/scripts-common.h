@@ -16,6 +16,10 @@ namespace msctl { namespace agent { namespace scripts {
     void get_common_opts( const lua::object_wrapper &obj,
                           common::create_parameters &out );
 
+    void add_callback( const lua::object_wrapper &obj,
+                       const std::string &name,
+                       common::create_parameters &out );
+
     const std::string hide_table_name( );
 
 }}}

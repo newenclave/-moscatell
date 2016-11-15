@@ -23,6 +23,36 @@ namespace msctl { namespace agent { namespace scripts {
         namespace mlua      = msctl::lua;
         namespace objects   = mlua::objects;
 
+        std::string get_hide_table_name( );
+
+        std::string gs_hide_table_name = get_hide_table_name( );
+        std::string gs_app_path        = get_hide_table_name( ) + ".app";
+
+        ///////////////////////////////////////
+
+        struct event_callback final: public utilities::parameter {
+            lua_State           *state;
+            objects::base_sptr   call;
+            void apply( ) override
+            {
+                call->push( state );
+            }
+        };
+
+        void add_call( common::create_parameters::param_map& store,
+                       lua_State *state, const std::string &name,
+                       objects::base_sptr obj )
+        {
+            if( obj ) {
+                if( obj->type_id( ) == objects::base::TYPE_FUNCTION ) {
+                    auto par = std::make_shared<event_callback>( );
+                    par->state = state;
+                    par->call  = obj;
+                    store[name] = par;
+                }
+            }
+        }
+
         std::string get_hide_table_name( )
         {
             struct local_index_type { };
@@ -32,10 +62,6 @@ namespace msctl { namespace agent { namespace scripts {
             return oss.str( );
         }
 
-        std::string gs_hide_table_name = get_hide_table_name( );
-        std::string gs_app_path        = get_hide_table_name( ) + ".app";
-
-        ///////////////////////////////////////
         int lcall_log_print_all( lua_State *L, logger_impl::level lvl )
         {
 
@@ -88,6 +114,11 @@ namespace msctl { namespace agent { namespace scripts {
         }
     }
 
+    const std::string hide_table_name( )
+    {
+        return gs_hide_table_name;
+    }
+
     void set_application( lua_State *L, agent::application *app )
     {
         mlua::state ls( L );
@@ -115,12 +146,19 @@ namespace msctl { namespace agent { namespace scripts {
                           common::create_parameters &out )
     {
         out.tcp_nowait = obj["tcp_nowait"].as_bool( false );
+        out.max_queue  = obj["max_queue"].as_uint32( 10 );
+
+        if( out.max_queue < 5 ) {
+            out.max_queue = 5;
+        }
     }
 
-    const std::string hide_table_name( )
+    void add_callback(const lua::object_wrapper &obj,
+                       const std::string &name,
+                       common::create_parameters &out)
     {
-        return gs_hide_table_name;
+        auto call = obj[name].as_object( );
+        add_call( out.params, obj.state( ), name, call );
     }
-
 
 }}}

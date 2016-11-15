@@ -1125,6 +1125,11 @@ namespace lua {
             }
             return def;
         }
+
+        lua_State * state( ) const
+        {
+            return state_;
+        }
     };
 
 
