@@ -129,7 +129,7 @@ namespace lua {
             const size_t libs_count = sizeof( libs ) / sizeof( libs[0] );
 
             for( size_t i=0; i<libs_count; ++i ) {
-                if( 0 == libs[i].name.compare( libname ) ) {                    
+                if( 0 == libs[i].name.compare( libname ) ) {
                     return openlib( libname, libs[i].func, libs[i].results );
                 }
             }
@@ -954,102 +954,179 @@ namespace lua {
 
     typedef std::list<path_element_info> path_element_info_list;
 
-    inline void split_path( const char *str, path_element_info_list &res )
-    {
-        path_element_info_list tmp;
+    class object_wrapper {
 
-        path_element_info next;
+        lua_State          *state_;
+        objects::base_sptr  ptr_;
 
-        next.name_.reserve( 16 );
+        static void split_path( const char *str, path_element_info_list &res )
+        {
+            path_element_info_list tmp;
 
-        for( ; *str; ++str ) {
+            path_element_info next;
 
-            switch( *str ) {
-            case '\'':
-                ++str;
-                next.type_ = objects::base::TYPE_STRING;
-                while( *str ) {
-                    if( *str == '\\' ) {
-                        ++str;
-                    } else if( *str == '\'' ) {
+            next.name_.reserve( 16 );
+
+            for( ; *str; ++str ) {
+
+                switch( *str ) {
+                case '\'':
+                    ++str;
+                    next.type_ = objects::base::TYPE_STRING;
+                    while( *str ) {
+                        if( *str == '\\' ) {
+                            ++str;
+                        } else if( *str == '\'' ) {
+                            break;
+                        }
+                        next.push_back( *str++ );
+                    }
+                    break;
+                case '.':
+                    tmp.push_back( next );
+                    next.clear( );
+                    break;
+                case '\\':
+                    ++str;
+                    if( !*str ) {
                         break;
                     }
-                    next.push_back( *str++ );
+                default:
+                    next.push_back( *str );
+                    break;
                 }
-                break;
-            case '.':
+            }
+            if( !next.empty( ) ) {
                 tmp.push_back( next );
-                next.clear( );
-                break;
-            case '\\':
-                ++str;
-                if( !*str ) {
-                    break;
-                }
-            default:
-                next.push_back( *str );
-                break;
             }
+            res.swap( tmp );
         }
-        if( !next.empty( ) ) {
-            tmp.push_back( next );
-        }
-        res.swap( tmp );
-    }
 
-    inline objects::base_sptr object_by_path( lua_State *L,
-                                              const objects::base *o,
-                                              const char *str )
-    {
-        typedef path_element_info_list::iterator iter;
+        static objects::base_sptr object_by_path( lua_State *L,
+                                                  const objects::base *o,
+                                                  const char *str )
+        {
+            typedef path_element_info_list::iterator iter;
 
-        objects::base_sptr result;
+            objects::base_sptr result;
 
-        path_element_info_list res;
-        split_path( str, res );
+            path_element_info_list res;
+            split_path( str, res );
 
-        size_t len = res.size( );
+            size_t len = res.size( );
 
-        lua::state ls(L);
-        objects::base_sptr tmp;
+            lua::state ls(L);
+            objects::base_sptr tmp;
 
-        for( iter b(res.begin( )), e(res.end( )); b != e; ++b ) {
+            for( iter b(res.begin( )), e(res.end( )); b != e; ++b ) {
 
-            if( objects::base::is_reference( o ) ) {
-                tmp = ls.ref_to_object( o );
-                o = tmp.get( );
-            }
-
-            if( o->type_id( ) != objects::base::TYPE_TABLE ) {
-                break;
-            }
-
-            bool found = false;
-
-            for( size_t i=0; i<o->count( ); ++i ) {
-                const objects::base *next = o->at( i );
-                const objects::base *name = next->at( 0 );
-                if( b->check( name->str( ), name->type_id( ) ) ) {
-                    o = next->at( 1 );
-                    found = true;
-                    break;
-                }
-            }
-
-            if( !found ) {
-                break;
-            }
-
-            if( 0 == --len ) {
                 if( objects::base::is_reference( o ) ) {
-                    result = ls.ref_to_object( o, 1 );
-                } else {
-                    result.reset( o->clone( ) );
+                    tmp = ls.ref_to_object( o );
+                    o = tmp.get( );
+                }
+
+                if( o->type_id( ) != objects::base::TYPE_TABLE ) {
+                    break;
+                }
+
+                bool found = false;
+
+                for( size_t i=0; i<o->count( ); ++i ) {
+                    const objects::base *next = o->at( i );
+                    const objects::base *name = next->at( 0 );
+                    if( b->check( name->str( ), name->type_id( ) ) ) {
+                        o = next->at( 1 );
+                        found = true;
+                        break;
+                    }
+                }
+
+                if( !found ) {
+                    break;
+                }
+
+                if( 0 == --len ) {
+                    if( objects::base::is_reference( o ) ) {
+                        result = ls.ref_to_object( o, 1 );
+                    } else {
+                        result.reset( o->clone( ) );
+                    }
                 }
             }
+            return result;
         }
-        return result;
-    }
+
+    public:
+
+        object_wrapper( lua_State *s, const objects::base *p )
+            :state_(s)
+            ,ptr_(p ? p->clone( ) : NULL)
+        { }
+
+        object_wrapper( lua_State *s, objects::base_sptr p )
+            :state_(s)
+            ,ptr_(p)
+        { }
+
+        object_wrapper operator [] ( const std::string &path ) const
+        {
+            auto obj = object_by_path( state_, ptr_.get( ), path.c_str( ) );
+            return object_wrapper( state_, obj );
+        }
+
+        objects::base_sptr as_object( )
+        {
+            return ptr_;
+        }
+
+        bool is_string( ) const
+        {
+            return ptr_->type_id( ) == objects::base::TYPE_STRING;
+        }
+
+        bool is_bool( ) const
+        {
+            return is_number( )
+                || ptr_->type_id( ) == objects::base::TYPE_BOOL;
+        }
+
+        bool is_number( ) const
+        {
+            switch (ptr_->type_id( )) {
+            case objects::base::TYPE_INTEGER:
+            case objects::base::TYPE_UINTEGER:
+                return true;
+            default:
+                break;
+            }
+            return false;
+        }
+
+        std::string as_string( const std::string &def = std::string( ) )
+        {
+            if( ptr_ && is_string( ) ) {
+                return ptr_->str( );
+            }
+            return def;
+        }
+
+        std::uint32_t as_uint32( std::uint32_t def = 0 )
+        {
+            if( ptr_ && is_number( ) ) {
+                return ptr_->inum( );
+            }
+            return def;
+        }
+
+        bool as_bool( bool def = false )
+        {
+            if( ptr_ && is_bool( ) ) {
+                return !!ptr_->inum( );
+            }
+            return def;
+        }
+    };
+
 
 }
 

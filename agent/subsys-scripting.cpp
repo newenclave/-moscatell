@@ -92,84 +92,7 @@ namespace msctl { namespace agent {
             ls.register_call( "shell", &lcall_system );
         }
 
-        struct table_wrap {
-
-            lua_State          *state;
-            objects::base_sptr  ptr;
-
-            table_wrap( lua_State *s, const objects::base *p )
-                :state(s)
-            {
-                if( p ) {
-                    ptr.reset(p->clone( ));
-                }
-            }
-
-            table_wrap( lua_State *s, objects::base_sptr p )
-                :state(s)
-                ,ptr(p)
-            { }
-
-            table_wrap operator [] ( const std::string &path ) const
-            {
-                auto obj = mlua::object_by_path( state, ptr.get( ),
-                                                 path.c_str( ) );
-                return table_wrap( state, obj );
-            }
-
-            objects::base_sptr as_object( )
-            {
-                return ptr;
-            }
-
-            bool is_string( ) const
-            {
-                return ptr->type_id( ) == objects::base::TYPE_STRING;
-            }
-
-            bool is_bool( ) const
-            {
-                return is_number( )
-                    || ptr->type_id( ) == objects::base::TYPE_BOOL;
-            }
-
-            bool is_number( ) const
-            {
-                switch (ptr->type_id( )) {
-                case objects::base::TYPE_INTEGER:
-                case objects::base::TYPE_UINTEGER:
-                    return true;
-                default:
-                    break;
-                }
-                return false;
-            }
-
-            std::string as_string( const std::string &def = std::string( ) )
-            {
-                if( ptr && is_string( ) ) {
-                    return ptr->str( );
-                }
-                return def;
-            }
-
-            std::uint32_t as_uint32( std::uint32_t def = 0 )
-            {
-                if( ptr && is_number( ) ) {
-                    return ptr->inum( );
-                }
-                return def;
-            }
-
-            bool as_bool( bool def = false )
-            {
-                if( ptr && is_bool( ) ) {
-                    return !!ptr->inum( );
-                }
-                return def;
-            }
-
-        };
+        using table_wrap = mlua::object_wrapper;
 
         struct event_callback final: public utilities::parameter {
             lua_State           *state;
@@ -614,7 +537,7 @@ namespace msctl { namespace agent {
 
                 auto par = map_params.find( "parameter" );
 
-                size_t params = par != map_params.end( );
+                size_t params = (par != map_params.end( ));
 
                 std::lock_guard<std::mutex> lck(state_lock_);
 
