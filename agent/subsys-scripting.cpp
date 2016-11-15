@@ -9,11 +9,12 @@
 #include "common/utilities.h"
 #include "common/tuntap.h"
 #include "common/net-ifaces.h"
-#include "common/parameter.h"
+#include "common/create-params.h"
 
 #include "boost/algorithm/string.hpp"
 
-#include "scripting-common.h"
+#include "scripts-common.h"
+#include "scripts-server.h"
 
 #define LOG(lev) log_(lev, "script")
 #define LOGINF   LOG(logger_impl::level::info)
@@ -174,12 +175,12 @@ namespace msctl { namespace agent {
                 auto on_del = tw["on_disconnect"].as_object();
                 auto on_reg = tw["on_register"].as_object();
 
-                add_call( inf.params, L, "on_disconnect", on_del );
-                add_call( inf.params, L, "on_register", on_reg );
+                add_call( inf.common.params, L, "on_disconnect", on_del );
+                add_call( inf.common.params, L, "on_register", on_reg );
 
                 objects::table p;
                 auto param_ref = std::make_shared<objects::reference>( L, &p );
-                add_param( inf.params, L, "parameter", param_ref );
+                add_param( inf.common.params, L, "parameter", param_ref );
 
 
                 if( inf.point.empty( ) || addr_poll.empty( ) ) {
@@ -319,12 +320,12 @@ namespace msctl { namespace agent {
                 auto on_reg    = tw["on_register"].as_object( );
                 auto on_dis    = tw["on_disconnect"].as_object( );
 
-                add_call( inf.params, L, "on_register",   on_reg );
-                add_call( inf.params, L, "on_disconnect", on_dis );
+                add_call( inf.common.params, L, "on_register",   on_reg );
+                add_call( inf.common.params, L, "on_disconnect", on_dis );
 
                 objects::table p;
                 auto param_ref = std::make_shared<objects::reference>( L, &p );
-                add_param( inf.params, L, "parameter", param_ref );
+                add_param( inf.common.params, L, "parameter", param_ref );
 
                 if( inf.point.empty( ) ) {
                     LOGERR << "Bad client format: " << quote(svc->str( ))
@@ -454,6 +455,8 @@ namespace msctl { namespace agent {
             /// set tables
             objects::table tab;
 
+            scripts::server::add_calls( tab );
+
             tab.add( "server", new_function( &lcall_add_server ) );
             tab.add( "client", new_function( &lcall_add_client ) );
             tab.add( "logger", new_function( &lcall_add_logger ) );
@@ -558,7 +561,7 @@ namespace msctl { namespace agent {
             res.add( "dst_addr",  new_string( reg.my_ip ) );
             res.add( "device",    new_string( inf.device ) );
 
-            call_event( "on_register", inf.params, res );
+            call_event( "on_register", inf.common.params, res );
         }
 
         void on_con_disconnect( vtrc::common::connection_iface *c,
@@ -568,7 +571,7 @@ namespace msctl { namespace agent {
 
             add_connection_to_table( res, c );
 
-            call_event( "on_disconnect", inf.params, res );
+            call_event( "on_disconnect", inf.common.params, res );
         }
 
         void on_client_disconnect( vtrc::client::base_sptr c,
@@ -580,7 +583,7 @@ namespace msctl { namespace agent {
 
             res.add( "device", new_string( inf.device ) );
 
-            call_event( "on_disconnect", inf.params, res );
+            call_event( "on_disconnect", inf.common.params, res );
         }
 
         void on_client_register( vtrc::client::base_sptr c,
@@ -596,7 +599,7 @@ namespace msctl { namespace agent {
             res.add( "dst_addr",  new_string( reg.server_ip ) );
             res.add( "device",    new_string( inf.device ) );
 
-            call_event( "on_register", inf.params, res );
+            call_event( "on_register", inf.common.params, res );
         }
 
         void init( )

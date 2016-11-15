@@ -6,7 +6,7 @@
 #include "vtrc-common/vtrc-signal-declaration.h"
 #include "vtrc-client/vtrc-client-base.h"
 
-#include "common/parameter.h"
+#include "common/create-params.h"
 
 namespace msctl { namespace agent {
 
@@ -18,15 +18,13 @@ namespace msctl { namespace agent {
 
     public:
 
-        using client_param_sptr = utilities::parameter_sptr;
-        using client_param_map  = std::map<std::string, client_param_sptr>;
 
         struct client_create_info {
-            std::string         point;
-            std::string         device;
-            bool                tcp_nowait;
-            std::string         id;
-            client_param_map    params;
+            std::string               point;
+            std::string               device;
+            bool                      tcp_nowait;
+            std::string               id;
+            common::create_parameters common;
         };
 
         struct register_info {

@@ -5,7 +5,7 @@
 #include "application.h"
 #include "vtrc-common/vtrc-signal-declaration.h"
 
-#include "common/parameter.h"
+#include "common/create-params.h"
 #include "lowlevel-protocol-server.h"
 
 namespace msctl { namespace agent {
@@ -30,7 +30,7 @@ namespace msctl { namespace agent {
             bool                            mcast       = true;
             bool                            bcast       = false;
             lowlevel::server_proto_option   ll_opts; /// options for lowlevel
-            listener_param_map              params;
+            common::create_parameters       common;
         };
 
         struct register_info {

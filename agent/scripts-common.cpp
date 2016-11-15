@@ -2,7 +2,7 @@
 #include <string>
 #include <sstream>
 
-#include "scripting-common.h"
+#include "scripts-common.h"
 
 #include "common/moscatell-lua.h"
 #include "common/utilities.h"
