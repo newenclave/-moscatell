@@ -587,7 +587,7 @@ namespace {
                 res = local::create( *app_, opts, inf.addpess );
             } else if( inf.is_ip( ) ) {
                 res = tcp::create( *app_, opts, inf.addpess, inf.service,
-                                   srv_info.tcp_nowait );
+                                   srv_info.common.tcp_nowait );
             } else {
                 LOGERR << "Failed to add endpoint '"
                        << point << "'; Bad format";

@@ -22,7 +22,6 @@ namespace msctl { namespace agent {
         struct client_create_info {
             std::string               point;
             std::string               device;
-            bool                      tcp_nowait;
             std::string               id;
             common::create_parameters common;
         };

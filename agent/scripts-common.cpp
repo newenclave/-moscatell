@@ -4,7 +4,6 @@
 
 #include "scripts-common.h"
 
-#include "common/moscatell-lua.h"
 #include "common/utilities.h"
 
 #define LOG(lev) log_(lev, "script")
@@ -40,7 +39,7 @@ namespace msctl { namespace agent { namespace scripts {
         int lcall_log_print_all( lua_State *L, logger_impl::level lvl )
         {
 
-            static auto &log_(lcall_get_application(L)->log( ));
+            static auto &log_(get_application(L)->log( ));
 
             mlua::state ls(L);
 
@@ -89,7 +88,7 @@ namespace msctl { namespace agent { namespace scripts {
         }
     }
 
-    void lcall_set_application( lua_State *L, agent::application *app )
+    void set_application( lua_State *L, agent::application *app )
     {
         mlua::state ls( L );
         lua::objects::table hide_table;
@@ -99,7 +98,7 @@ namespace msctl { namespace agent { namespace scripts {
         ls.set_object( gs_hide_table_name.c_str( ), &hide_table );
     }
 
-    application *lcall_get_application(lua_State *L)
+    application *get_application(lua_State *L)
     {
         mlua::state ls( L );
         void *ptr = ls.get<void *>( gs_app_path.c_str( ) );
@@ -112,9 +111,16 @@ namespace msctl { namespace agent { namespace scripts {
         register_globals( ls );
     }
 
+    void get_common_opts( const lua::object_wrapper &obj,
+                          common::create_parameters &out )
+    {
+        out.tcp_nowait = obj["tcp_nowait"].as_bool( false );
+    }
+
     const std::string hide_table_name( )
     {
         return gs_hide_table_name;
     }
+
 
 }}}

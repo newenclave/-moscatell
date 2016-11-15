@@ -537,7 +537,7 @@ namespace {
             if( !failed ) {
                 clnt->info    = inf;
                 clnt->device  = dev;
-                clnt->no_wait = add_info.tcp_nowait;
+                clnt->no_wait = add_info.common.tcp_nowait;
                 if( auto_start ) {
                     clnt->start_connect( );
                 }

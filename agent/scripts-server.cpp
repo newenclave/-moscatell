@@ -15,7 +15,7 @@ namespace msctl { namespace agent { namespace scripts { namespace server {
 
         application *get_app( lua_State *L )
         {
-            return lcall_get_application( L );
+            return get_application( L );
         }
     }
 

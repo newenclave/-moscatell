@@ -4,8 +4,6 @@
 #include "subsys-listener.h"
 #include "subsys-logging.h"
 
-#include "common/moscatell-lua.h"
-
 #include "common/utilities.h"
 #include "common/tuntap.h"
 #include "common/net-ifaces.h"
@@ -164,7 +162,8 @@ namespace msctl { namespace agent {
                 inf.max_queue             = tw["max_queue"].as_uint32( );
                 inf.ll_opts.hello_message = tw["txt.hello"].as_string( );
 
-                inf.tcp_nowait = tw["options.tcp_nowait"].as_bool( true );
+                scripts::get_common_opts( tw["options"], inf.common );
+
                 inf.mcast      = tw["options.multicast"].as_bool( true );
                 inf.bcast      = tw["options.broadcast"].as_bool( true );
 
@@ -314,8 +313,9 @@ namespace msctl { namespace agent {
 
                 inf.point      = tw["addr"].as_string( );
                 inf.device     = tw["dev"].as_string( );
-                inf.tcp_nowait = tw["tcp_nowait"].as_bool( true );
                 inf.id         = tw["id"].as_string( );
+
+                scripts::get_common_opts( tw["options"], inf.common );
 
                 auto on_reg    = tw["on_register"].as_object( );
                 auto on_dis    = tw["on_disconnect"].as_object( );
@@ -449,7 +449,7 @@ namespace msctl { namespace agent {
             mlua::state ls(L);
             using namespace objects;
 
-            scripts::lcall_set_application( L, app );
+            scripts::set_application( L, app );
             scripts::lcall_init_globls( L );
 
             /// set tables
