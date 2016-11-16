@@ -18,7 +18,6 @@ namespace msctl { namespace agent {
 
     public:
 
-
         struct client_create_info {
             std::string               point;
             std::string               device;

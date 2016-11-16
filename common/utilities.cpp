@@ -292,7 +292,7 @@ namespace utilities {
             void _reset_check_summ( char *data, size_t hlen )
             {
                 auto words  = reinterpret_cast<std::uint16_t *>(data);
-                auto old = words[5];
+                //auto old = words[5];
                 words[5] = 0;
                 std::uint32_t res = 0;
 
@@ -309,10 +309,17 @@ namespace utilities {
         }
 
         namespace v4 {
+
             bool is_multicast( uint32_t addr )
             {
                 return ( addr & 0xF0000000) == 0xE0000000;
             }
+
+            bool is_broadcast( uint32_t addr )
+            {
+                return addr == 0xFFFFFFFF;
+            }
+
         }
 
         bool reset_check_summ(char *data, size_t len)
