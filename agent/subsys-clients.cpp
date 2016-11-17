@@ -39,7 +39,7 @@ namespace {
 
     logger_impl *gs_logger = nullptr;
 
-    using delayed_call = vcomm::delayed_call;
+    using delayed_call     = vcomm::delayed_call;
     using delayed_call_ptr = std::unique_ptr<delayed_call>;
     using vtrc_client_sptr = vclnt::vtrc_client_sptr;
 
@@ -87,7 +87,9 @@ namespace {
             }
 
             auto wthis = std::weak_ptr<client_info>(shared_from_this( ));
+
             auto callback = [this, wthis] ( const error_code &err ) {
+
                 auto &log_(*gs_logger);
                 if( err ) {
                     auto inst = wthis.lock( );
@@ -97,6 +99,7 @@ namespace {
                         inst->start_timer( );
                     }
                 }
+
             };
 
             if( info.is_local( ) ) {
@@ -291,8 +294,8 @@ namespace {
 
     using client_info_sptr = std::shared_ptr<client_info>;
     using client_info_wptr = std::weak_ptr<client_info>;
-    using clients_map = std::map<std::string, client_info_sptr>;
-    using clients_set = std::set<vclnt::base_sptr>;
+    using clients_map      = std::map<std::string, client_info_sptr>;
+    using clients_set      = std::set<vclnt::base_sptr>;
     using create_info_sptr = std::shared_ptr<clients::client_create_info>;
 
 }

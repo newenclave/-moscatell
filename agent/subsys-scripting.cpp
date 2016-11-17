@@ -146,8 +146,8 @@ namespace msctl { namespace agent {
 
                 auto addr_poll  = tw["addr_poll"].as_string( );
 
-                scripts::add_callback( tw, "on_register",   inf.common );
-                scripts::add_callback( tw, "on_disconnect", inf.common );
+                scripts::add_function( tw, "on_register",   inf.common );
+                scripts::add_function( tw, "on_disconnect", inf.common );
 
                 objects::table p;
                 auto param_ref = std::make_shared<objects::reference>( L, &p );
@@ -283,13 +283,13 @@ namespace msctl { namespace agent {
 
                 table_wrap tw(L, svc);
 
-                inf.point      = tw["addr"].as_string( );
-                inf.device     = tw["dev"].as_string( );
-                inf.id         = tw["id"].as_string( );
+                inf.point  = tw["addr"].as_string( );
+                inf.device = tw["dev"].as_string( );
+                inf.id     = tw["id"].as_string( );
 
                 scripts::get_common_opts( tw["options"],    inf.common );
-                scripts::add_callback( tw, "on_register",   inf.common );
-                scripts::add_callback( tw, "on_disconnect", inf.common );
+                scripts::add_function( tw, "on_register",   inf.common );
+                scripts::add_function( tw, "on_disconnect", inf.common );
 
                 objects::table p;
                 auto param_ref = std::make_shared<objects::reference>( L, &p );

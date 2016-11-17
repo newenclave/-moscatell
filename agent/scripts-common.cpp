@@ -39,17 +39,27 @@ namespace msctl { namespace agent { namespace scripts {
             }
         };
 
-        void add_call( common::create_parameters::param_map& store,
-                       lua_State *state, const std::string &name,
-                       objects::base_sptr obj )
+        void add_obj( common::create_parameters::param_map& store,
+                      lua_State *state, const std::string &name,
+                      objects::base_sptr obj, int obj_type )
+        {
+            if( obj && ( obj->type_id( ) == obj_type ) ) {
+                auto par    = std::make_shared<event_callback>( );
+                par->state  = state;
+                par->call   = obj;
+                store[name] = par;
+            }
+        }
+
+        void add_any( common::create_parameters::param_map& store,
+                      lua_State *state, const std::string &name,
+                      objects::base_sptr obj )
         {
             if( obj ) {
-                if( obj->type_id( ) == objects::base::TYPE_FUNCTION ) {
-                    auto par = std::make_shared<event_callback>( );
-                    par->state = state;
-                    par->call  = obj;
-                    store[name] = par;
-                }
+                auto par    = std::make_shared<event_callback>( );
+                par->state  = state;
+                par->call   = obj;
+                store[name] = par;
             }
         }
 
@@ -153,12 +163,21 @@ namespace msctl { namespace agent { namespace scripts {
         }
     }
 
-    void add_callback(const lua::object_wrapper &obj,
+    void add_function(const lua::object_wrapper &obj,
                        const std::string &name,
                        common::create_parameters &out)
     {
         auto call = obj[name].as_object( );
-        add_call( out.params, obj.state( ), name, call );
+        add_obj( out.params, obj.state( ), name, call,
+                 objects::base::TYPE_FUNCTION );
+    }
+
+    void add_object( const lua::object_wrapper &obj,
+                     const std::string &name,
+                     common::create_parameters &out)
+    {
+        auto call = obj[name].as_object( );
+        add_any( out.params, obj.state( ), name, call );
     }
 
 }}}

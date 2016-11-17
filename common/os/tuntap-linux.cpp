@@ -12,7 +12,11 @@
 //#include <linux/ipv6.h>
 #include <linux/ip.h>
 
+#ifdef __ANDROID__
+#define TUNTAP_DEVICE_NAME "/dev/tun"
+#else
 #define TUNTAP_DEVICE_NAME "/dev/net/tun"
+#endif
 
 #include <sys/ioctl.h>
 #include <fcntl.h>
@@ -64,29 +68,32 @@ namespace {
         return 0;
     }
 
-    int opentuntap( const char *dev, int flags, bool persis )
+    int opentuntap( std::string &in_out, int flags, bool persis )
     {
         const char *clonedev = TUNTAP_DEVICE_NAME;
 
         struct ifreq ifr;
+        struct ifreq ifr_out;
         int fd = -1;
 
         if( (fd = open(clonedev , O_RDWR)) < 0 ) {
             return fd;
         }
 
-        memset(&ifr, 0, sizeof(ifr));
+        memset( &ifr, 0, sizeof(ifr) );
+        memset( &ifr_out, 0, sizeof(ifr) );
 
         ifr.ifr_flags = flags;
 
-        if (*dev) {
-            strncpy(ifr.ifr_name, dev, IFNAMSIZ);
-        }
+        strncpy( ifr.ifr_name, in_out.c_str( ), IFNAMSIZ );
 
         if( ioctl( fd, TUNSETIFF, static_cast<void *>(&ifr) ) < 0 ) {
             close( fd );
             return -1;
         }
+
+        ioctl( fd, TUNGETIFF, static_cast<void *>(&ifr_out) );
+        in_out.assign( ifr_out.ifr_name );
 
         flags = fcntl( fd, F_GETFL, 0 );
         if( flags < 0 ) {
@@ -197,14 +204,15 @@ namespace {
     {
         device_info res;
 
-        auto hdl = opentuntap( hint_name.c_str( ),
-                               IFF_TUN | IFF_NO_PI, true );
+        std::string name = hint_name;
+
+        auto hdl = opentuntap( name, IFF_TUN | IFF_NO_PI, true );
 
         if( hdl == common::TUN_HANDLE_INVALID_VALUE ) {
             throw_errno( "open_tun." );
         }
 
-        res.assign_name( hint_name );
+        res.assign_name( name );
         res.assign( hdl );
 
         return std::move( res );

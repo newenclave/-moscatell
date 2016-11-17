@@ -21,11 +21,6 @@
 
 #include "../utilities.h"
 
-#define TUNTAP_DEVICE_NAME "/dev/tun"
-#define IFF_TUN     0x0001
-#define IFF_TAP     0x0002
-#define IFF_NO_PI   0x1000
-
 #include "posix-utils.h"
 
 namespace msctl { namespace common {
@@ -85,14 +80,14 @@ namespace {
         memset( &addreq, 0, sizeof(addreq) );
         strncpy( addreq.ifra_name, devname, IFNAMSIZ );
 
-        addreq.ifra_addr.sin_family      = AF_INET;
-        addreq.ifra_addr.sin_addr.s_addr = htonl(ip0);
+        addreq.ifra_addr.sin_family         = AF_INET;
+        addreq.ifra_addr.sin_addr.s_addr    = htonl(ip0);
 
         addreq.ifra_dstaddr.sin_family      = AF_INET;
         addreq.ifra_dstaddr.sin_addr.s_addr = htonl(otherip);
 
-        addreq.ifra_mask.sin_family      = AF_INET;
-        addreq.ifra_mask.sin_addr.s_addr = htonl(mask);
+        addreq.ifra_mask.sin_family         = AF_INET;
+        addreq.ifra_mask.sin_addr.s_addr    = htonl(mask);
 
         if (ioctl( s.fd_, SIOCSIFPHYADDR, &addreq) < 0 ) {
             close( s.fd_ );
