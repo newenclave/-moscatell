@@ -6,3 +6,7 @@
 	path = lua
 	url = https://github.com/newenclave/lua
 	branch = master
+[submodule "srpc"]
+	path = srpc
+	url = https://github.com/newenclave/srpc
+	branch = master
