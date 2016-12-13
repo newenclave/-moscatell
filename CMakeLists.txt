@@ -44,12 +44,19 @@ else( )
                   REQUIRED)
 endif( )
 
+############################ SRPC library ############################
+execute_process( COMMAND "git" "submodule" "init"
+                 WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+execute_process( COMMAND "git" "submodule" "update" "srpc"
+                 WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+######################################################################
+
 ############################ VTRC library ############################
 find_file( VTRC_IMPORT_CMAKE
-         NAMES
-             "vtrc-import.cmake"
-         PATHS
-             "${CMAKE_CURRENT_SOURCE_DIR}/vtrc/" )
+           NAMES
+               "vtrc-import.cmake"
+           PATHS
+               "${CMAKE_CURRENT_SOURCE_DIR}/vtrc/" )
 
 if( VTRC_IMPORT )
   set( VTRC_IMPORT_CMAKE ${VTRC_IMPORT} )
@@ -57,12 +64,10 @@ endif( )
 
 if( NOT VTRC_IMPORT_CMAKE )
   message( "INITING submodule VTRC" )
-  execute_process( COMMAND "git" "submodule" "init"
-                   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
   execute_process( COMMAND "git" "submodule" "update" "vtrc"
                    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
-  execute_process( COMMAND "git" "pull" "origin" "master"
-                   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/vtrc")
+#  execute_process( COMMAND "git" "pull" "origin" "master"
+#                   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/vtrc")
 endif( NOT VTRC_IMPORT_CMAKE )
 
 add_subdirectory( vtrc )
