@@ -53,10 +53,8 @@ execute_process( COMMAND "git" "submodule" "update" "srpc"
 
 ############################ VTRC library ############################
 find_file( VTRC_IMPORT_CMAKE
-           NAMES
-               "vtrc-import.cmake"
-           PATHS
-               "${CMAKE_CURRENT_SOURCE_DIR}/vtrc/" )
+           NAMES "vtrc-import.cmake"
+           PATHS "${CMAKE_CURRENT_SOURCE_DIR}/vtrc/" )
 
 if( VTRC_IMPORT )
   set( VTRC_IMPORT_CMAKE ${VTRC_IMPORT} )
