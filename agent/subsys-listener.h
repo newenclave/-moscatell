@@ -8,6 +8,8 @@
 #include "common/create-params.h"
 #include "lowlevel-protocol-server.h"
 
+#include "srpc/common/timers/periodical.h"
+
 namespace msctl { namespace agent {
 
     class listener: public common::subsys_iface {

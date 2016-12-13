@@ -253,7 +253,7 @@ namespace {
     void setup_device( native_handle /*device*/,
                        const std::string &name,
                        const std::string &ip,
-                       const std::string &otherip,
+                       const std::string & /*otherip*/,
                        const std::string &mask )
     {
         int res = setip_v4_addr( name.c_str( ), ip.c_str( ) );

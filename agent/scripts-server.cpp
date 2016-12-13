@@ -20,7 +20,7 @@ namespace msctl { namespace agent { namespace scripts { namespace server {
         }
     }
 
-    void add_calls( lua::objects::table &tab )
+    void add_calls( lua::objects::table &/*tab*/ )
     {
 
     }
