@@ -1,5 +1,5 @@
 
-aux_source_directory(. src_dir)
+aux_source_directory( . src_dir)
 
 set( exe_name ${PROJECT_NAME}_agent )
 

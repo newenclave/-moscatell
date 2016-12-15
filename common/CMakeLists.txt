@@ -6,7 +6,10 @@ include_directories( ${PROJECT_SOURCE_DIR} )
 list(APPEND src_dirs
         .
         ./os
+        ${SRPC_DIR_LIST}
     )
+
+message("Add srpc: " ${SRPC_DIR_LIST})
 
 foreach( src_dir ${src_dirs} )
     aux_source_directory(${src_dir} lib_src)
