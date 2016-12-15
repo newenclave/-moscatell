@@ -455,6 +455,7 @@ namespace {
     }
 
 }
+
     struct listener::impl {
 
         application     *app_;
