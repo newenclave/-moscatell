@@ -9,8 +9,6 @@ list(APPEND src_dirs
         ${SRPC_DIR_LIST}
     )
 
-message("Add srpc: " ${SRPC_DIR_LIST})
-
 foreach( src_dir ${src_dirs} )
     aux_source_directory(${src_dir} lib_src)
     file(GLOB headers ${src_dir}/*.h ${src_dir}/*.hpp)
