@@ -55,7 +55,8 @@ add_definitions( -DCONFIG_TOPNAMESPACE=srpc )
 
 include( "${CMAKE_CURRENT_SOURCE_DIR}/srpc/srpc_files.cmake" )
 set(SRPC_DIR_LIST)
-srpc_all_headers_path(SRPC_DIR_LIST)
+srpc_all_headers_path(SRPC_DIR_LIST, srpc)
+message("SRPC: " ${SRPC_DIR_LIST})
 ######################################################################
 
 ############################ VTRC library ############################
