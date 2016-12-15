@@ -53,6 +53,10 @@ execute_process( COMMAND "git" "submodule" "update" "srpc"
 include_directories( "${CMAKE_CURRENT_SOURCE_DIR}/srpc/include" )
 add_definitions( -DCONFIG_TOPNAMESPACE=srpc )
 
+include( "${CMAKE_CURRENT_SOURCE_DIR}/srpc/srpc_files.cmake" )
+set(SRPC_DIR_LIST)
+all_headers_path(SRPC_DIR_LIST)
+
 ######################################################################
 
 ############################ VTRC library ############################
