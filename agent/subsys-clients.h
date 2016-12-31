@@ -6,6 +6,8 @@
 #include "vtrc-common/vtrc-signal-declaration.h"
 #include "vtrc-client/vtrc-client-base.h"
 
+#include "srpc/common/observers/define.h"
+
 #include "common/create-params.h"
 
 namespace msctl { namespace agent {
