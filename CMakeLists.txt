@@ -55,6 +55,8 @@ add_definitions( -DCONFIG_TOPNAMESPACE=srpc )
 
 include( "${CMAKE_CURRENT_SOURCE_DIR}/srpc/srpc_files.cmake" )
 
+add_definitions( -DCXX11_ENABLED=1 )
+
 set(SRPC_DIR_LIST)
 srpc_all_headers_path(SRPC_DIR_LIST "${CMAKE_CURRENT_SOURCE_DIR}/srpc/include" )
 ######################################################################
