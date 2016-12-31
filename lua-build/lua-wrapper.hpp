@@ -1010,6 +1010,10 @@ namespace lua {
 
             objects::base_sptr result;
 
+            if( !o ) {
+                return result;
+            }
+
             path_element_info_list res;
             split_path( str, res );
 
