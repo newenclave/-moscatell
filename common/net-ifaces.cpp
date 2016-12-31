@@ -145,31 +145,35 @@ namespace {
                     auto p = reinterpret_cast<info_type>(&tdata[0]);
                     while( p ) {
 
-                        auto addr = from_sock_addr( p->FirstUnicastAddress
-                                                     ->Address.lpSockaddr );
+                        if( p->FirstUnicastAddress ) {
+                            auto addr = from_sock_addr( p->FirstUnicastAddress
+                                                         ->Address.lpSockaddr );
 
-                        auto family = p->FirstUnicastAddress
-                                       ->Address.lpSockaddr->sa_family;
+                            auto family = p->FirstUnicastAddress
+                                           ->Address.lpSockaddr->sa_family;
 
-                        auto mask_bits = p->FirstUnicastAddress
-                                          ->OnLinkPrefixLength;
+                            auto mask_bits = p->FirstUnicastAddress
+                                              ->OnLinkPrefixLength;
 
-                        auto mask = create_mask( family, mask_bits );
+                            auto mask = create_mask( family, mask_bits );
 
-                        tmp.emplace_back( addr, mask,
-                                  make_mb_string( p->FriendlyName, CP_UTF8 ),
-                                  p->IfIndex );
+                            tmp.emplace_back( addr, mask,
+                                    make_mb_string( p->FriendlyName, CP_UTF8 ),
+                                    p->IfIndex );
+                        }
                         p = p->Next;
                     }
                 } else {
                     using info_type = PIP_ADAPTER_ADDRESSES;
                     auto p = reinterpret_cast<info_type>(&tdata[0]);
                     while( p ) {
-                        tmp.emplace_back(
+                        if( p->FirstUnicastAddress ) {
+                            tmp.emplace_back(
                                     p->FirstUnicastAddress->Address.lpSockaddr,
                                     reinterpret_cast<const sockaddr *>(&mask0),
                                     make_mb_string( p->FriendlyName, CP_UTF8 ),
                                     p->IfIndex );
+                        }
                         p = p->Next;
                     }
                 }
