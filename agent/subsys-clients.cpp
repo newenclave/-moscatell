@@ -54,6 +54,7 @@ namespace {
         std::string               device;
         utilities::endpoint_info  info;
         delayed_call              timer;
+        std::string               name;
         bool                      active = true;
         bool                      no_wait = true;
 
@@ -333,7 +334,7 @@ namespace {
             }
         }
 
-        void add_client( vclnt::base_sptr c, create_info_sptr dev_hint )
+        void add_client( client_info_sptr cnt, create_info_sptr dev_hint )
         {
 
             struct dev_keeper {
@@ -355,7 +356,8 @@ namespace {
 
             dev_keeper keeper;
 
-            std::string dev = dev_hint->device;
+            vclnt::base_sptr c = cnt->client;
+            std::string dev    = dev_hint->device;
 
             keeper.dev = client_transport::create( dev, c.get( ) );
             keeper.c   = c;
@@ -374,7 +376,7 @@ namespace {
                     rpc::tuntap::register_req req;
                     rpc::tuntap::register_res res;
 
-                    req.set_name( dev_hint->name );
+                    req.set_name( c->get_session_id( ) );
 
                     cl.call( &client_stub::register_me, &req, &res );
 
@@ -486,7 +488,7 @@ namespace {
                            << quote(c->device)
                               ;
                     app_->get_rpc_service( ).post( [this, c, inf]( ) {
-                        add_client( c->client, inf );
+                        add_client( c, inf );
                     } );
                     parent_->get_on_client_ready( )( c->client, *inf );
                 }
@@ -542,6 +544,7 @@ namespace {
             if( !failed ) {
                 clnt->info    = inf;
                 clnt->device  = dev;
+                clnt->name    = add_info.id;
                 clnt->no_wait = add_info.common.tcp_nowait;
                 if( auto_start ) {
                     clnt->start_connect( );
