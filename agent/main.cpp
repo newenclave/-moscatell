@@ -66,14 +66,6 @@ namespace {
         return res;
     }
 
-    void fill_cmd_options( po::options_description &desc )
-    {
-        desc.add_options( )
-            ("command,c", po::value<std::string>( ),
-                    "run command;")
-            ;
-    }
-
     void fill_all_options( po::options_description &desc )
     {
         using string_list = std::vector<std::string>;
@@ -175,7 +167,7 @@ int main( int argc, const char **argv )
     try {
 
         po::options_description options;
-        fill_cmd_options( options );
+        fill_all_options( options );
 
         agent::thread_prefix::set( "M" );
         vcomm::pool_pair pp(0, 0);

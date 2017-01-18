@@ -116,6 +116,7 @@ namespace msctl { namespace agent { namespace scripts {
         {
             ls.openlib( "base" );
             ls.openlib( "string" );
+            ls.openlib( "io" );
             ls.openlib( "table" );
             ls.openlib( "math" );
             ls.openlib( "utf8" );
