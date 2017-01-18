@@ -374,6 +374,8 @@ namespace {
                     rpc::tuntap::register_req req;
                     rpc::tuntap::register_res res;
 
+                    req.set_name( dev_hint->name );
+
                     cl.call( &client_stub::register_me, &req, &res );
 
                     auto naddr  = ntohl(res.iface_addr( ).v4_saddr( ));

@@ -32,6 +32,7 @@ namespace msctl { namespace agent {
         };
 
         struct register_info {
+            std::string name;
             std::string ip;
             std::string mask;
             std::string my_ip;

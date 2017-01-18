@@ -365,13 +365,13 @@ namespace msctl { namespace agent {
             auto ifaces = utilities::get_system_ifaces( );
             for( auto &i: ifaces ) {
                 res.add( new_table( )
-                         ->add( "name", new_string( i.name( ) ) )
-                         ->add( "addr", new_string( i.addr( ).to_string( ) ) )
-                         ->add( "mask", new_string( i.mask( ).to_string( ) ) )
-                         ->add( "id",   new_integer( i.id( ) ) )
-                         ->add( "is_v4",   new_boolean( i.is_v4( ) ) )
-                         ->add( "is_v6",   new_boolean( i.is_v6( ) ) )
-                         );
+                       ->add( "name",  new_string( i.name( ) ) )
+                       ->add( "addr",  new_string( i.addr( ).to_string( ) ) )
+                       ->add( "mask",  new_string( i.mask( ).to_string( ) ) )
+                       ->add( "id",    new_integer( i.id( ) ) )
+                       ->add( "is_v4", new_boolean( i.is_v4( ) ) )
+                       ->add( "is_v6", new_boolean( i.is_v6( ) ) )
+                       );
             }
 
             res.push( L );
@@ -566,6 +566,7 @@ namespace msctl { namespace agent {
             res.add( "mask",      new_string( reg.mask ) );
             res.add( "dst_addr",  new_string( reg.server_ip ) );
             res.add( "device",    new_string( inf.device ) );
+            res.add( "name",      new_string( inf.name ) );
 
             call_event( "on_register", inf.common.params, res );
         }

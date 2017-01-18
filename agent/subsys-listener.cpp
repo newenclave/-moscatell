@@ -88,6 +88,7 @@ namespace {
         utilities::address_v4_poll   poll_;
 
         struct client_info {
+            std::string              name;
             vcomm::connection_iface *connection = nullptr;
             std::uint32_t            address;
             server_wrapper_sptr      client;
@@ -154,7 +155,7 @@ namespace {
 
         void add_client_impl( vcomm::connection_iface_wptr clnt,
                               gpb::RpcController*          controller,
-                              const ::msctl::rpc::tuntap::register_req* /*req*/,
+                              const ::msctl::rpc::tuntap::register_req* req,
                               ::msctl::rpc::tuntap::register_res*       res,
                               gpb::Closure *done, empty_callback cb )
         {
@@ -182,6 +183,7 @@ namespace {
             }
 
             auto next_client_info = std::make_shared<client_info>( );
+            next_client_info->name        = req->name( );
             next_client_info->connection  = clntptr.get( );
             next_client_info->address     = next_addr;
 
@@ -216,8 +218,9 @@ namespace {
             auto str_mask = ba::ip::address_v4( htonl(next_mask) );
             logger_impl &log_(*gs_logger);
 
-            LOGINF << "Set client address: " << str_addr.to_string( )
-                   << " with mask " << str_mask.to_string( );
+            LOGINF << "Set up client " << quote(req->name( )) << ";"
+                   << " address: "  << str_addr.to_string( )
+                   << " mask: "     << str_mask.to_string( );
 
             auto my_addr = htonl(addr_.to_v4( ).to_ulong( ));
             res->mutable_iface_addr( )->set_v4_saddr( htonl(next_addr) );
@@ -226,6 +229,7 @@ namespace {
             res->mutable_iface_addr( )->set_v4_mask( next_mask );
 
             listener::register_info rinfo;
+            rinfo.name  = req->name( );
             rinfo.my_ip = addr_.to_string( );
             rinfo.ip    = str_addr.to_string( );
             rinfo.mask  = str_mask.to_string( );

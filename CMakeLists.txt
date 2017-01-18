@@ -26,9 +26,9 @@ find_package( Protobuf REQUIRED)
 
 if( NOT USE_SHARED_BOOST )
     set(Boost_USE_STATIC_LIBS     ON)
-    set(Boost_USE_MULTITHREADED   ON)
-    set(Boost_USE_STATIC_RUNTIME  ON)
 endif(USE_SHARED_BOOST)
+set(Boost_USE_MULTITHREADED   ON)
+set(Boost_USE_STATIC_RUNTIME  ON)
 
 if(MSVC) 
     find_package( Boost 1.53 COMPONENTS
