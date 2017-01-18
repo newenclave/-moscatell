@@ -528,6 +528,7 @@ namespace msctl { namespace agent {
             res.add( "mask",      new_string( reg.mask ) );
             res.add( "dst_addr",  new_string( reg.my_ip ) );
             res.add( "device",    new_string( inf.device ) );
+            res.add( "name",      new_string( reg.name ) );
 
             call_event( "on_register", inf.common.params, res );
         }
