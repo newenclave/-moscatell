@@ -253,7 +253,7 @@ namespace {
     void setup_device( native_handle /*device*/,
                        const std::string &name,
                        const std::string &ip,
-                       const std::string & /*otherip*/,
+                       const std::string &otherip,
                        const std::string &mask )
     {
         int res = setip_v4_addr( name.c_str( ), ip.c_str( ) );
@@ -261,7 +261,7 @@ namespace {
             throw_errno( "ioctl(SIOCSIFADDR)" );
         }
 
-#if 1
+#if 0
         auto dst_net = ba::ip::address_v4(
               ba::ip::address_v4::from_string( ip ).to_ulong( ) &
               ba::ip::address_v4::from_string( mask ).to_ulong( ) );
@@ -269,16 +269,20 @@ namespace {
         if( res < 0 ) {
             throw_errno( "ioctl(SIOCSIFDSTADDR)" );
         }
+        res = setip_v4_mask( name.c_str( ), mask.c_str( ) );
+        if( res < 0 ) {
+            throw_errno( "ioctl(SIOCSIFNETMASK)" );
+        }
 #else
         res = setip_v4_dst_addr( name.c_str( ), otherip.c_str( ) );
         if( res < 0 ) {
             throw_errno( "ioctl(SIOCSIFDSTADDR)" );
         }
-#endif
-        res = setip_v4_mask( name.c_str( ), mask.c_str( ) );
+        res = setip_v4_mask( name.c_str( ), "255.255.255.255" );
         if( res < 0 ) {
             throw_errno( "ioctl(SIOCSIFNETMASK)" );
         }
+#endif
         device_up( name );
     }
 
