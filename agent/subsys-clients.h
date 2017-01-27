@@ -56,6 +56,10 @@ namespace msctl { namespace agent {
             return "clients";
         }
 
+        void new_client_registered( vtrc::client::base_sptr c,
+                                    const client_create_info &inf,
+                                    const register_info &reginf );
+
         bool add_client( const client_create_info &inf, bool start );
 
     private:

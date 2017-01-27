@@ -196,17 +196,24 @@ namespace {
 
     };
 
+    using create_info_sptr = std::shared_ptr<clients::client_create_info>;
 
     class cnt_impl: public rpc::tuntap::client_instance {
 
+        application *app_;
         client_transport::shared_type device_;
+        create_info_sptr              devhint_;
         vclnt::base *clnt_;
-
         delayed_call keep_alive_;
 
     public:
-        cnt_impl( client_transport::shared_type device, vclnt::base *c )
-            :device_(device)
+        cnt_impl( application *app,
+                  client_transport::shared_type device,
+                  create_info_sptr devhint,
+                  vclnt::base *c )
+            :app_(app)
+            ,device_(device)
+            ,devhint_(devhint)
             ,clnt_(c)
             ,keep_alive_(device->get_io_service( ))
         {
@@ -275,6 +282,52 @@ namespace {
             device_->set_tick( application::tick_count( ) );
         }
 
+        void register_ok( ::google::protobuf::RpcController* /*controller*/,
+                          const ::msctl::rpc::tuntap::register_res* request,
+                          ::msctl::rpc::empty*              /*response*/,
+                          ::google::protobuf::Closure* done) override
+        {
+            auto &log_(*gs_logger);
+            vcomm::closure_holder done_holder( done );
+
+            auto cli = &app_->subsys<clients>( );
+
+            auto naddr  = ntohl(request->iface_addr( ).v4_saddr( ));
+            auto ndaddr = ntohl(request->iface_addr( ).v4_daddr( ));
+            auto nmask  = ntohl(request->iface_addr( ).v4_mask( ));
+
+            ba::ip::address_v4 saddr(naddr);
+            ba::ip::address_v4 daddr(ndaddr);
+            ba::ip::address_v4 mask(nmask);
+
+            LOGINF << "Got address: "
+                   << quote(saddr.to_string( )
+                            + "->"
+                            + daddr.to_string( ))
+                   << " and mask: " << quote(mask.to_string( ));
+
+            auto hdl = device_->get_stream( ).native_handle( );
+
+            clients::register_info reginfo;
+
+            reginfo.ip        = saddr.to_string( );
+            reginfo.mask      = mask.to_string( );
+            reginfo.server_ip = daddr.to_string( );
+
+            common::setup_device( hdl, devhint_->device,
+                                  reginfo.ip,
+                                  reginfo.server_ip,
+                                  reginfo.mask );
+
+            cli->new_client_registered( clnt_->shared_from_this( ),
+                                        *devhint_, reginfo );
+
+            device_->start_read( );
+
+            LOGINF << "Device " << quote(devhint_->device)
+                   << " setup success.";
+        }
+
         class client_service_wrapper: public vcomm::rpc_service_wrapper {
         public:
             using service_sptr = vcomm::rpc_service_wrapper::service_sptr;
@@ -285,10 +338,12 @@ namespace {
 
         using service_wrapper_sptr = std::shared_ptr<client_service_wrapper>;
 
-        static service_wrapper_sptr create( client_transport::shared_type d,
+        static service_wrapper_sptr create( application *app,
+                                            client_transport::shared_type d,
+                                            create_info_sptr devhint,
                                             vclnt::base *clnt )
         {
-            auto svc = std::make_shared<cnt_impl>( d, clnt );
+            auto svc = std::make_shared<cnt_impl>( app, d, devhint, clnt );
             return std::make_shared<client_service_wrapper>( svc );
         }
     };
@@ -297,7 +352,6 @@ namespace {
     using client_info_wptr = std::weak_ptr<client_info>;
     using clients_map      = std::map<std::string, client_info_sptr>;
     using clients_set      = std::set<vclnt::base_sptr>;
-    using create_info_sptr = std::shared_ptr<clients::client_create_info>;
 
 }
 
@@ -366,10 +420,13 @@ namespace {
 
             if( keeper.dev ) {
 
-                c->assign_rpc_handler( cnt_impl::create( keeper.dev,
+                c->assign_rpc_handler( cnt_impl::create( app_,
+                                                         keeper.dev,
+                                                         dev_hint,
                                                          c.get( ) ) );
 
                 client_wrapper cl(c->create_channel( ), true);
+                cl.channel( )->set_flag( vcomm::rpc_channel::DISABLE_WAIT );
 
                 try {
 
@@ -380,36 +437,36 @@ namespace {
 
                     cl.call( &client_stub::register_me, &req, &res );
 
-                    auto naddr  = ntohl(res.iface_addr( ).v4_saddr( ));
-                    auto ndaddr = ntohl(res.iface_addr( ).v4_daddr( ));
-                    auto nmask  = ntohl(res.iface_addr( ).v4_mask( ));
+//                    auto naddr  = ntohl(res.iface_addr( ).v4_saddr( ));
+//                    auto ndaddr = ntohl(res.iface_addr( ).v4_daddr( ));
+//                    auto nmask  = ntohl(res.iface_addr( ).v4_mask( ));
 
-                    ba::ip::address_v4 saddr(naddr);
-                    ba::ip::address_v4 daddr(ndaddr);
-                    ba::ip::address_v4 mask(nmask);
+//                    ba::ip::address_v4 saddr(naddr);
+//                    ba::ip::address_v4 daddr(ndaddr);
+//                    ba::ip::address_v4 mask(nmask);
 
-                    LOGINF << "Got address: "
-                           << quote(saddr.to_string( )
-                                    + "->"
-                                    + daddr.to_string( ))
-                           << " and mask: " << quote(mask.to_string( ));
+//                    LOGINF << "Got address: "
+//                           << quote(saddr.to_string( )
+//                                    + "->"
+//                                    + daddr.to_string( ))
+//                           << " and mask: " << quote(mask.to_string( ));
 
-                    auto hdl = keeper.dev->get_stream( ).native_handle( );
+//                    auto hdl = keeper.dev->get_stream( ).native_handle( );
 
-                    clients::register_info reginfo;
+//                    clients::register_info reginfo;
 
-                    reginfo.ip        = saddr.to_string( );
-                    reginfo.mask      = mask.to_string( );
-                    reginfo.server_ip = daddr.to_string( );
+//                    reginfo.ip        = saddr.to_string( );
+//                    reginfo.mask      = mask.to_string( );
+//                    reginfo.server_ip = daddr.to_string( );
 
-                    common::setup_device( hdl, dev,
-                                          reginfo.ip,
-                                          reginfo.server_ip,
-                                          reginfo.mask );
+//                    common::setup_device( hdl, dev,
+//                                          reginfo.ip,
+//                                          reginfo.server_ip,
+//                                          reginfo.mask );
 
-                    parent_->get_on_client_register( )( c, *dev_hint, reginfo );
+//                    parent_->new_client_registered( c, *dev_hint, reginfo );
 
-                    LOGINF << "Device " << quote(dev) << " setup success.";
+//                    LOGINF << "Device " << quote(dev) << " setup success.";
 
                 } catch( const std::exception &ex ) {
                     LOGERR << "Client failed to register: " << ex.what( );
@@ -418,8 +475,8 @@ namespace {
 
                 keeper.release( );
 
-                cl.channel( )->set_flag( vcomm::rpc_channel::DISABLE_WAIT );
-                keeper.dev->start_read( );
+                //cl.channel( )->set_flag( vcomm::rpc_channel::DISABLE_WAIT );
+                //keeper.dev->start_read( );
 
                 std::lock_guard<std::mutex> lck(clients_lock_);
                 clients_.insert( c );
@@ -594,6 +651,13 @@ namespace {
     std::shared_ptr<clients> clients::create( application *app )
     {
         return std::make_shared<clients>( app );
+    }
+
+    void clients::new_client_registered( vtrc::client::base_sptr c,
+                                         const client_create_info &inf,
+                                         const register_info &reginf )
+    {
+        on_client_register_( c, inf, reginf );
     }
 
     bool clients::add_client( const client_create_info &inf, bool start )

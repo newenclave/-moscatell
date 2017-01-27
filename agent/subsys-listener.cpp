@@ -184,13 +184,14 @@ namespace {
                 return;
             }
 
-            auto next_client_info = std::make_shared<client_info>( );
-            next_client_info->name        = req->name( );
-            next_client_info->connection  = clntptr.get( );
-            next_client_info->address     = next_addr;
+            auto next_client_info        = std::make_shared<client_info>( );
+            next_client_info->name       = req->name( );
+            next_client_info->connection = clntptr.get( );
+            next_client_info->address    = next_addr;
 
             auto chan = std::make_shared<server_wrapper>
                                 (create_event_channel(clntptr), true );
+
             chan->channel( )->set_flag( vcomm::rpc_channel::DISABLE_WAIT );
 
             auto weak_this = weak_type(shared_from_this( ));
@@ -216,18 +217,20 @@ namespace {
                     = clients_[reinterpret_cast<std::uintptr_t>(c_ptr)]
                     = next_client_info;
 
+
+
             auto str_addr = ba::ip::address_v4( next_addr );
             auto str_mask = ba::ip::address_v4( htonl(next_mask) );
             logger_impl &log_(*gs_logger);
 
-            LOGINF << "Set up client " << quote(req->name( )) << ";"
-                   << " address: "  << str_addr.to_string( )
-                   << " mask: "     << str_mask.to_string( );
+            LOGINF << "Set up client " << quote(req->name( ))   << ";"
+                   << " address: "     << str_addr.to_string( )
+                   << " mask: "        << str_mask.to_string( );
 
             auto my_addr = htonl(addr_.to_v4( ).to_ulong( ));
+
             res->mutable_iface_addr( )->set_v4_saddr( htonl(next_addr) );
             res->mutable_iface_addr( )->set_v4_daddr( my_addr );
-
             res->mutable_iface_addr( )->set_v4_mask( next_mask );
 
             listener::register_info rinfo;
@@ -235,6 +238,9 @@ namespace {
             rinfo.my_ip = addr_.to_string( );
             rinfo.ip    = str_addr.to_string( );
             rinfo.mask  = str_mask.to_string( );
+
+            server_wrapper wrap( chan->channel( ) );
+            wrap.call_request( &server_stub::register_ok, res );
 
             on_client_register( clntptr.get( ), *create_inf_, rinfo );
 

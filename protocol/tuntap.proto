@@ -54,6 +54,7 @@ service server_instance {
 }
 
 service client_instance {
+    rpc register_ok( register_res ) returns ( empty );
     rpc push( push_req ) returns ( push_res );
     rpc ping( empty ) returns ( empty );
 }
