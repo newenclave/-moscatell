@@ -5,10 +5,13 @@ import "common.proto";
 option cc_generic_services = true;
 
 message tuntap_message {
-    optional uint64 id     = 1;
-    optional bytes  call   = 2;
-    optional bytes  body   = 3;
-    optional error  err    = 4;
+
+    optional uint64 id     =  1;
+    optional bytes  svc    =  2;
+    optional bytes  call   =  3;
+    optional bytes  body   =  4;
+
+    optional error  err    = 20;
 }
 
 message address_pair {
