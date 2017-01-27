@@ -166,6 +166,7 @@ namespace {
         void on_read( char *data, size_t length ) override
         {
             if( common::extract_family( data, length ) == 4 ) {
+                //std::cout << "Sent bytes " << length << "\n";
                 // utilities::ip::fix_ttl( data, length, +1 );
                 rpc::tuntap::push_req req;
                 req.set_value( data, length );
@@ -263,6 +264,7 @@ namespace {
                    ::google::protobuf::Closure* done) override
         {
             vcomm::closure_holder done_holder( done );
+            //std::cout << "Got bytes " << request->value( ).size( ) << "\n";
             device_->write_post_notify( request->value( ),
                 [ ](const boost::system::error_code &err)
                 {
