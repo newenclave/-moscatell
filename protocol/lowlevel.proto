@@ -1,13 +1,8 @@
 package msctl.rpc.ll;
 
+import "common.proto";
+
 option cc_generic_services = true;
-
-//////////////// COMMON //////////////////
-
-message error {
-    optional uint32 code =  1;
-    optional string mess =  2;
-}
 
 //////////////// SERVER //////////////////
 

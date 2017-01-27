@@ -4,6 +4,13 @@ import "common.proto";
 
 option cc_generic_services = true;
 
+message tuntap_message {
+    optional uint64 id     = 1;
+    optional bytes  call   = 2;
+    optional bytes  body   = 3;
+    optional error  err    = 4;
+}
+
 message address_pair {
     enum address_family {
         FAMILY_INET  = 4;
@@ -12,14 +19,14 @@ message address_pair {
 
     optional address_family family  = 1;
 
-    optional uint32 v4_saddr            = 2;
-    optional uint32 v4_mask             = 3;
+    optional uint32 v4_saddr        = 2;
+    optional uint32 v4_mask         = 3;
 
-    optional bytes  v6_saddr            = 4;
-    optional bytes  v6_mask             = 5;
+    optional bytes  v6_saddr        = 4;
+    optional bytes  v6_mask         = 5;
 
-    optional uint32 v4_daddr            = 6;
-    optional bytes  v6_daddr            = 7;
+    optional uint32 v4_daddr        = 6;
+    optional bytes  v6_daddr        = 7;
 }
 
 message register_req {
@@ -35,6 +42,7 @@ message push_req {
 }
 
 message push_res { }
+
 
 service server_instance {
     rpc register_me( register_req ) returns ( register_res );

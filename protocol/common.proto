@@ -2,6 +2,11 @@ package msctl.rpc;
 
 message empty { }
 
+message error {
+    optional uint32 code =  1;
+    optional string mess =  2;
+}
+
 message handle {
     optional uint32 value = 1;
 }
