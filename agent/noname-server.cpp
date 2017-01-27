@@ -29,7 +29,7 @@ namespace {
     using tcp_size_policy = srpc::common::sizepack::varint<size_t>;
     using udp_size_policy = srpc::common::sizepack::none;
 
-    //using protocol_type = srpc::common::protocol::binary<>;
+    using protocol_type = srpc::common::protocol::binary<>;
 
     using namespace srpc;
     template <typename AcceptorType>
