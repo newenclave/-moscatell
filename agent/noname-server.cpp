@@ -77,6 +77,11 @@ namespace {
         using rpc_service_sptr  = vtrc::common::rpc_service_wrapper_sptr;
         using service_cache     = std::map<std::string, rpc_service_sptr>;
 
+        ~client_delegate( )
+        {
+            //std::cout << "client_delegate dtor"  << std::endl;
+        }
+
         client_delegate( size_t maxlen )
             :parent_type(maxlen)
             ,message_cache_(10)
@@ -160,6 +165,11 @@ namespace {
         transport_sptr                  t_;
         parent_calls                    calls_;
 
+        ~client_info_impl( )
+        {
+            //std::cout << "client_info_impl dtor"  << std::endl;
+        }
+
         transport_sptr transport( )
         {
             return t_;
@@ -192,7 +202,6 @@ namespace {
             client_.reset( new delegate_type( convertor::maxlen ) );
             client_->assign_transport( t );
             t->set_delegate( client_.get( ) );
-
         }
 
         void start( )
@@ -207,7 +216,8 @@ namespace {
 
         void close( )
         {
-            t_->close( );
+            std::cout << "close!" << std::endl;
+            t_.reset( );
         }
 
         void set_calls( noname::client_info::calls_sptr calls )
@@ -224,15 +234,16 @@ namespace {
 
     using namespace srpc;
     template <typename AcceptorType>
-    struct impl: public interface {
+    struct impl: public server::interface {
 
-        using acceptor_type  = AcceptorType;
-        using endpoint       = typename acceptor_type::endpoint;
-        using acceptor_sptr  = srpc::shared_ptr<acceptor_type>;
-        using transport_type = srpc::common::transport::interface;
-        using this_type      = impl<acceptor_type>;
+        using acceptor_type   = AcceptorType;
+        using endpoint        = typename acceptor_type::endpoint;
+        using acceptor_sptr   = srpc::shared_ptr<acceptor_type>;
+        using transport_type  = srpc::common::transport::interface;
+        using this_type       = impl<acceptor_type>;
+        using parent_delegete = srpc::server::acceptor::interface::delegate;
 
-        struct accept_delegate: public server::acceptor::interface::delegate {
+        struct accept_delegate: public parent_delegete {
 
             typedef impl<AcceptorType> parent_type;
 
@@ -338,6 +349,7 @@ namespace {
 
 }
 
+namespace server {
     namespace tcp {
         std::shared_ptr<interface> create( application *app,
                                            const std::string &svc,
@@ -355,6 +367,7 @@ namespace {
             return impl<udp_acceptor>::create( app, svc, port );
         }
     }
+}
 
 }}}
 
