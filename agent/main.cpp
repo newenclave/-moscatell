@@ -39,8 +39,12 @@ namespace {
         using namespace msctl::agent;
         app->subsys_add<logging>( );
         app->subsys_add<scripting>( );
+
         app->subsys_add<listener>( );
         app->subsys_add<clients>( );
+        app->subsys_add<listener2>( );
+        app->subsys_add<clients2>( );
+
         app->subsys_add<tuntap>( );
     }
 
