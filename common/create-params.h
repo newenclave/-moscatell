@@ -10,12 +10,15 @@
 namespace msctl { namespace common {
 
     struct create_parameters {
+
         using param_sptr = utilities::parameter_sptr;
         using param_map  = std::map<std::string, param_sptr>;
+
         struct direction {
 
         };
-        param_map params;
+
+        param_map     params;
         bool          tcp_nowait = false;
         std::uint32_t max_queue  = 10;
 

@@ -12,6 +12,8 @@
 #include "srpc/common/transport/types.h"
 
 #include "noname-common.h"
+#include "application.h"
+#include "subsys-listener2.h"
 
 namespace msctl { namespace agent { namespace noname {
 
@@ -36,10 +38,27 @@ namespace msctl { namespace agent { namespace noname {
 
     public:
         virtual ~interface( ) { }
+
         virtual void start( ) = 0;
         virtual void stop(  ) = 0;
         virtual acceptor_type *acceptor( ) = 0;
     };
+
+    using server_ptr  = interface *;
+    using server_sptr = std::shared_ptr<interface>;
+    using server_wptr = std::weak_ptr<interface>;
+
+    namespace tcp {
+        server_sptr create( application *app,
+                            const std::string &svc,
+                            std::uint16_t port );
+    }
+
+    namespace udp {
+        server_sptr create( application *app,
+                            const std::string &svc,
+                            std::uint16_t port );
+    }
 
 }}}
 

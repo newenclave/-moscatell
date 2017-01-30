@@ -18,8 +18,6 @@ namespace msctl { namespace agent {
         tuntap( application *app );
         static std::shared_ptr<tuntap> create( application *app );
 
-        void open_tun( const std::string &name );
-
     private:
 
         static const char* name( )

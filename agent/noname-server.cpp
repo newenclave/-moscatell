@@ -17,8 +17,6 @@
 
 #include "srpc/common/protocol/binary.h"
 
-#include "application.h"
-
 #include "protocol/tuntap.pb.h"
 
 namespace msctl { namespace agent { namespace noname {
@@ -53,6 +51,8 @@ namespace {
     using protocol_type = srpc::common::protocol::binary<SizePack>;
 
     using void_call = std::function<void (void)>;
+
+    using parent_calls = noname::client_info::calls_sptr;
 
     template <typename SizePolicy>
     struct client_delegate: public protocol_type<SizePolicy> {
@@ -158,6 +158,7 @@ namespace {
 
         std::unique_ptr<delegate_type>  client_;
         transport_sptr                  t_;
+        parent_calls                    calls_;
 
         transport_sptr transport( )
         {
@@ -189,7 +190,14 @@ namespace {
         {
             t_ = t->shared_from_this( );
             client_.reset( new delegate_type( convertor::maxlen ) );
+            client_->assign_transport( t );
             t->set_delegate( client_.get( ) );
+
+        }
+
+        void start( )
+        {
+            client_->get_transport( )->read( );
         }
 
         bool ready( )
@@ -200,6 +208,16 @@ namespace {
         void close( )
         {
             t_->close( );
+        }
+
+        void set_calls( noname::client_info::calls_sptr calls )
+        {
+            calls_ = calls;
+        }
+
+        noname::client_info::calls_sptr get_calls( )
+        {
+            return calls_;
         }
 
     };
@@ -230,7 +248,7 @@ namespace {
                     cli->reset_delegate( c );
 
                     auto plist = lst_;
-                    std::weak_ptr<my_client> wcli;
+                    std::weak_ptr<my_client> wcli = cli;
 
                     cli->client_->on_close_ = [plist, wcli]( ) {
                         srpc::shared_ptr<parent_type> lck(plist.lock( ));
@@ -318,21 +336,25 @@ namespace {
         accept_delegate         delegate_;
     };
 
-    std::shared_ptr<interface> create_tcp( application *app,
-                                           const std::string &svc,
-                                           std::uint16_t port )
-    {
-        return impl<tcp_acceptor>::create( app, svc, port );
-    }
-
-    std::shared_ptr<interface> create_udp( application *app,
-                                           const std::string &svc,
-                                           std::uint16_t port )
-    {
-        return impl<udp_acceptor>::create( app, svc, port );
-    }
-
 }
+
+    namespace tcp {
+        std::shared_ptr<interface> create( application *app,
+                                           const std::string &svc,
+                                           std::uint16_t port )
+        {
+            return impl<tcp_acceptor>::create( app, svc, port );
+        }
+    }
+
+    namespace udp {
+        std::shared_ptr<interface> create( application *app,
+                                           const std::string &svc,
+                                           std::uint16_t port )
+        {
+            return impl<udp_acceptor>::create( app, svc, port );
+        }
+    }
 
 }}}
 

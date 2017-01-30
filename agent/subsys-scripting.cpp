@@ -1,7 +1,10 @@
 
 #include "subsys-scripting.h"
 #include "subsys-clients.h"
+
 #include "subsys-listener.h"
+#include "subsys-listener2.h"
+
 #include "subsys-logging.h"
 
 #include "common/utilities.h"
@@ -134,13 +137,14 @@ namespace msctl { namespace agent {
             int res = 0;
             if( svc && svc->is_container( ) ) {
 
-                listener::server_create_info inf;
+                //listener::server_create_info inf;
+                listener2::server_create_info inf;
 
                 table_wrap tw(L, svc);
 
                 inf.point                 = tw["addr"].as_string( );
                 inf.device                = tw["dev"].as_string( );
-                inf.ll_opts.hello_message = tw["txt.hello"].as_string( );
+                //inf.ll_opts.hello_message = tw["txt.hello"].as_string( );
 
                 scripts::get_common_opts( tw["options"], inf.common );
 
@@ -220,7 +224,9 @@ namespace msctl { namespace agent {
                                                        addrs[1].to_ulong( ) );
                 }
 
-                ls.push( gs_application->subsys<listener>( )
+//                ls.push( gs_application->subsys<listener>( )
+//                                        .add_server( inf, false ) );
+                ls.push( gs_application->subsys<listener2>( )
                                         .add_server( inf, false ) );
                 res = 1;
             } else {

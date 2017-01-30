@@ -14,13 +14,38 @@ namespace msctl { namespace agent { namespace noname {
     using lowlevel_sptr  = std::shared_ptr<lowlevel_type>;
 
     struct client_info: public std::enable_shared_from_this<client_info> {
+
         virtual ~client_info( ) { }
         virtual transport_sptr transport( ) = 0;
         virtual bool post_message( lowlevel_sptr )  = 0;
         virtual bool send_message( lowlevel_sptr )  = 0;
         virtual lowlevel_sptr create_message( ) = 0;
+
+        virtual void start( ) = 0;
         virtual bool ready( ) = 0;
         virtual void close( ) = 0;
+
+        struct register_info {
+            std::string name;
+        };
+
+        struct calls {
+
+            /// server's calls
+            virtual void register_me( register_info &reg ) = 0;
+
+            /// clients's calls
+            virtual void register_ok( register_info &reg ) = 0;
+
+            /// common calls
+            virtual void push( const char *data, size_t len ) = 0;
+            virtual void ping( ) = 0;
+        };
+
+        using calls_sptr = std::shared_ptr<calls>;
+
+        virtual void set_calls( calls_sptr calls ) = 0;
+        virtual calls_sptr get_calls( ) = 0;
 
         std::weak_ptr<client_info>         weak_from_this( )
         {
