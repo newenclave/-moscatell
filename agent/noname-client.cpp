@@ -11,6 +11,8 @@
 
 #include "protocol/tuntap.pb.h"
 
+#include "srpc/common/cache/simple.h"
+
 namespace msctl { namespace agent { namespace noname {
 
 namespace {
@@ -60,6 +62,8 @@ namespace {
         using transport_type  = srpc::common::transport::interface;
         using this_type       = impl<connector_type>;
 
+        using cache_type      = srpc::common::cache::simple<lowlevel_type>;
+
         using connector_delegate = srpc::client::connector::interface::delegate;
         using parent_delegate    = protocol_type<size_policy>;
 
@@ -74,7 +78,6 @@ namespace {
             using buffer_type        = typename parent_type::buffer_type;
             using const_buffer_slice = typename parent_type::const_buffer_slice;
             using buffer_slice       = typename parent_type::buffer_slice;
-
             using track_type         = std::shared_ptr<void>;
             using track_weak         = std::weak_ptr<void>;
 
@@ -82,17 +85,31 @@ namespace {
                 :parent_delegate( len )
             { }
 
-            virtual buffer_type unpack_message( const_buffer_slice & )
+            buffer_type unpack_message( const_buffer_slice & )
             {
                 return buffer_type( );
             }
 
-            virtual buffer_slice pack_message( buffer_type, buffer_slice slice )
+            buffer_slice pack_message( buffer_type, buffer_slice slice )
             {
                 return slice;
             }
 
+            void on_message_ready( tag_type t, buffer_type b,
+                                   const_buffer_slice slice )
+            {
+                auto ll = message_cache_.get( );
+                ll->ParseFromArray( slice.data( ), slice.size( ) );
+
+                if( ll->id( ) > 100 ) {
+
+                } else {
+
+                }
+            }
+
             impl<ConnectorType> *parent_;
+            cache_type           message_cache_;
 
         };
 
