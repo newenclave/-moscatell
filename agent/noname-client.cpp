@@ -117,6 +117,8 @@ namespace {
                 parent_->proto_ =
                         std::make_shared<protocol>( maxlen );
                 parent_->transport_->set_delegate( parent_->proto_.get( ) );
+
+                parent_->transport_->read( );
             }
 
             void on_connect_error( const error_code &err )
@@ -141,17 +143,18 @@ namespace {
 
         void start( )
         {
-
+            connector_->open( );
+            connector_->connect( );
         }
 
         void stop(  )
         {
-
+            connector_->close( );
         }
 
         connector_type *connector( )
         {
-
+            return connector_.get( );
         }
 
         application    *app_;
