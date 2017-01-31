@@ -3,7 +3,6 @@
 #define SUBSYS_clients2_H
 
 #include "application.h"
-#include "noname-common.h"
 
 namespace msctl { namespace agent {
 

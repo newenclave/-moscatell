@@ -1,67 +1,67 @@
 #ifndef MSCTL_NONAME_COMMON_H
 #define MSCTL_NONAME_COMMON_H
 
-#include <memory>
-#include <cstdint>
-#include "srpc/common/transport/interface.h"
 #include "protocol/tuntap.pb.h"
+#include "srpc/common/protocol/binary.h"
+
+
+#include "srpc/client/connector/async/tcp.h"
+#include "srpc/client/connector/async/udp.h"
+
+#include "srpc/server/acceptor/async/tcp.h"
+#include "srpc/server/acceptor/async/udp.h"
+
 
 namespace msctl { namespace agent { namespace noname {
 
-    using transport_type = srpc::common::transport::interface;
-    using transport_sptr = std::shared_ptr<transport_type>;
-    using lowlevel_type  = msctl::rpc::tuntap::tuntap_message;
-    using lowlevel_sptr  = std::shared_ptr<lowlevel_type>;
+    using message_type    = msctl::rpc::tuntap::tuntap_message;
+    using message_sptr    = std::shared_ptr<message_type>;
 
-    struct client_info: public std::enable_shared_from_this<client_info> {
+    using tcp_size_policy = srpc::common::sizepack::varint<size_t>;
+    using udp_size_policy = srpc::common::sizepack::none;
 
-        virtual ~client_info( ) { }
-        virtual transport_sptr transport( ) = 0;
-        virtual bool post_message( lowlevel_sptr )  = 0;
-        virtual bool send_message( lowlevel_sptr )  = 0;
-        virtual lowlevel_sptr create_message( ) = 0;
+    using tcp_connector    = srpc::client::connector::async::tcp;
+    using udp_connector    = srpc::client::connector::async::udp;
 
-        virtual void start( ) = 0;
-        virtual bool ready( ) = 0;
-        virtual void close( ) = 0;
+    template <typename T>
+    struct connector_to_size_policy;
 
-        struct register_info {
-            std::string name;
-        };
-
-        struct calls {
-
-            /// server's calls
-            virtual void register_me( register_info &reg ) = 0;
-
-            /// clients's calls
-            virtual void register_ok( register_info &reg ) = 0;
-
-            /// common calls
-            virtual void push( const char *data, size_t len ) = 0;
-            virtual void ping( ) = 0;
-        };
-
-        using calls_sptr = std::shared_ptr<calls>;
-
-        virtual void set_calls( calls_sptr calls ) = 0;
-        virtual calls_sptr get_calls( ) = 0;
-
-        std::weak_ptr<client_info>         weak_from_this( )
-        {
-            return std::weak_ptr<client_info>(shared_from_this( ));
-        }
-
-        std::weak_ptr<client_info const>   weak_from_this( ) const
-        {
-            return std::weak_ptr<client_info const>(shared_from_this( ));
-        }
-
+    template <>
+    struct connector_to_size_policy<tcp_connector> {
+        using policy = tcp_size_policy;
+        static const size_t maxlen = 8096;
     };
 
-    using client_sptr = std::shared_ptr<client_info>;
-    using client_wptr = std::weak_ptr<client_info>;
+    template <>
+    struct connector_to_size_policy<udp_connector> {
+        using policy = udp_size_policy;
+        static const size_t maxlen = 45 * 1024;
+    };
+
+
+    using tcp_acceptor    = srpc::server::acceptor::async::tcp;
+    using udp_acceptor    = srpc::server::acceptor::async::udp;
+
+    template <typename T>
+    struct acceptor_to_size_policy;
+
+    template <>
+    struct acceptor_to_size_policy<tcp_acceptor> {
+        using policy = tcp_size_policy;
+        static const size_t maxlen = 8096;
+    };
+
+    template <>
+    struct acceptor_to_size_policy<udp_acceptor> {
+        using policy = udp_size_policy;
+        static const size_t maxlen = 45 * 1024;
+    };
+
+    template <typename SizePack>
+    using protocol_type = srpc::common::protocol::binary<SizePack>;
+
+    using void_call = std::function<void (void)>;
 
 }}}
 
-#endif // NONAMECOMMON_H
+#endif

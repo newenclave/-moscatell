@@ -13,7 +13,6 @@
 #include "srpc/common/transport/interface.h"
 #include "srpc/common/transport/types.h"
 
-#include "noname-common.h"
 #include "application.h"
 #include "subsys-listener2.h"
 

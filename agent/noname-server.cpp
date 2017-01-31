@@ -23,214 +23,134 @@ namespace msctl { namespace agent { namespace noname {
 
 namespace {
 
-    using message_type    = msctl::rpc::tuntap::tuntap_message;
-    using message_sptr    = std::shared_ptr<message_type>;
+//    template <typename SizePolicy>
+//    struct client_delegate: public protocol_type<SizePolicy> {
 
-    using tcp_size_policy = srpc::common::sizepack::varint<size_t>;
-    using udp_size_policy = srpc::common::sizepack::none;
+//        using this_type          = client_delegate<SizePolicy>;
+//        using parent_type        = protocol_type<SizePolicy>;
+//        using size_policy        = SizePolicy;
 
-    using tcp_acceptor    = srpc::server::acceptor::async::tcp;
-    using udp_acceptor    = srpc::server::acceptor::async::udp;
+//        using tag_type           = typename parent_type::tag_type;
+//        using buffer_type        = typename parent_type::buffer_type;
+//        using const_buffer_slice = typename parent_type::const_buffer_slice;
+//        using buffer_slice       = typename parent_type::buffer_slice;
+//        using tag_policy         = typename parent_type::tag_policy;
 
-    template <typename T>
-    struct acceptor_to_size_policy;
+//        using track_type         = std::shared_ptr<void>;
+//        using track_weak         = std::weak_ptr<void>;
 
-    template <>
-    struct acceptor_to_size_policy<tcp_acceptor> {
-        using policy = tcp_size_policy;
-        static const size_t maxlen = 8096;
-    };
+//        using call_type = std::function<void (tag_type,
+//                                              buffer_type,
+//                                              const_buffer_slice)>;
 
-    template <>
-    struct acceptor_to_size_policy<udp_acceptor> {
-        using policy = udp_size_policy;
-        static const size_t maxlen = 45 * 1024;
-    };
+//        using cache_type        = srpc::common::cache::simple<lowlevel_type>;
+//        using buf_cache_type    = srpc::common::cache::simple<std::string>;
+//        using rpc_service_sptr  = vtrc::common::rpc_service_wrapper_sptr;
+//        using service_cache     = std::map<std::string, rpc_service_sptr>;
 
-    template <typename SizePack>
-    using protocol_type = srpc::common::protocol::binary<SizePack>;
+//        using message_lite      = google::protobuf::MessageLite;
 
-    using void_call = std::function<void (void)>;
+//        ~client_delegate( )
+//        {
+//            //std::cout << "client_delegate dtor"  << std::endl;
+//        }
 
-    using parent_calls = noname::client_info::calls_sptr;
+//        client_delegate( size_t maxlen )
+//            :parent_type(maxlen)
+//            ,message_cache_(10)
+//            ,buf_cache_(10)
+//        {
+//            call_ = [this]( tag_type t,
+//                            buffer_type b,
+//                            const_buffer_slice c)
+//            {
+//                init_call( t, b, c );
+//            };
+//        }
 
-    template <typename SizePolicy>
-    struct client_delegate: public protocol_type<SizePolicy> {
+//        void set_default_call(  )
+//        {
+//            call_ = [this]( tag_type t,
+//                            buffer_type b,
+//                            const_buffer_slice c)
+//            {
+//                on_message_ready( t, b, c );
+//            };
+//        }
 
-        using this_type          = client_delegate<SizePolicy>;
-        using parent_type        = protocol_type<SizePolicy>;
-        using size_policy        = SizePolicy;
+//        buffer_slice prepare_message( buffer_type buf, tag_type tag,
+//                                      const message_lite &mess )
+//        {
+//            typedef typename parent_type::size_policy size_policy;
 
-        using tag_type           = typename parent_type::tag_type;
-        using buffer_type        = typename parent_type::buffer_type;
-        using const_buffer_slice = typename parent_type::const_buffer_slice;
-        using buffer_slice       = typename parent_type::buffer_slice;
+//            buf->resize( size_policy::max_length );
 
-        using track_type         = std::shared_ptr<void>;
-        using track_weak         = std::weak_ptr<void>;
+//            const size_t old_len   = buf->size( );
+//            const size_t hash_size = this->hash( )->length( );
 
-        using call_type = std::function<void (tag_type,
-                                              buffer_type,
-                                              const_buffer_slice)>;
+//            tag_policy::append( tag, *buf );
+//            mess.AppendToString( buf.get( ) );
 
-        using cache_type        = srpc::common::cache::simple<lowlevel_type>;
-        using rpc_service_sptr  = vtrc::common::rpc_service_wrapper_sptr;
-        using service_cache     = std::map<std::string, rpc_service_sptr>;
+//            buf->resize( buf->size( ) + hash_size );
 
-        ~client_delegate( )
-        {
-            //std::cout << "client_delegate dtor"  << std::endl;
-        }
+//            this->hash( )->get( buf->c_str( ) + old_len,
+//                                buf->size( )  - old_len - hash_size,
+//                             &(*buf)[buf->size( )    - hash_size]);
 
-        client_delegate( size_t maxlen )
-            :parent_type(maxlen)
-            ,message_cache_(10)
-        {
-            call_ = [this]( tag_type t,
-                            buffer_type b,
-                            const_buffer_slice c)
-            {
-                init_call( t, b, c );
-            };
-        }
+//            buffer_slice res( &(*buf)[old_len],
+//                                 buf->size( ) - old_len );
 
-        void set_default_call(  )
-        {
-            call_ = [this]( tag_type t,
-                            buffer_type b,
-                            const_buffer_slice c)
-            {
-                on_message_ready( t, b, c );
-            };
-        }
+//            buffer_slice packed = this->pack_message( buf, res );
 
-        virtual buffer_type unpack_message( const_buffer_slice & )
-        {
-            return buffer_type( );
-        }
+//            return this->insert_size_prefix( buf, packed );
+//        }
 
-        virtual buffer_slice pack_message( buffer_type, buffer_slice slice )
-        {
-            return slice;
-        }
+//        virtual buffer_type unpack_message( const_buffer_slice & )
+//        {
+//            return buffer_type( );
+//        }
 
-        void init_call( tag_type, buffer_type, const_buffer_slice )
-        {
+//        virtual buffer_slice pack_message( buffer_type, buffer_slice slice )
+//        {
+//            return slice;
+//        }
 
-        }
+//        void init_call( tag_type, buffer_type, const_buffer_slice )
+//        {
 
-        void on_message_ready( tag_type, buffer_type buf,
-                               const_buffer_slice slice )
-        {
-            auto ll = message_cache_.get( );
-            ll->ParseFromArray( slice.data( ), slice.size( ) );
+//        }
 
-            if( ll->id( ) > 100 ) {
+//        void on_message_ready( tag_type, buffer_type /*buf*/,
+//                               const_buffer_slice slice )
+//        {
+//            auto ll = message_cache_.get( );
+//            ll->ParseFromArray( slice.data( ), slice.size( ) );
 
-                rpc_service_sptr serv;
+//            if( ll->id( ) > 100 ) {
+//                if( ll->call( ) == "push" ) {
+//                    me_->get_calls( )->push( ll->body( ).c_str( ),
+//                                             ll->body( ).size( ) );
+//                } else if( ll->call( ) == "reg" ) {
+//                    client_info::register_info inf;
+//                    me_->get_calls( )->register_me( inf );
+//                }
+//            } else {
 
-                auto f = cache_.find( ll->svc( ) );
-                if( f == cache_.end( ) ) {
-                    //serv = app_->get_service_by_name(  );
-                } else {
-                    serv = f->second;
-                }
+//            }
+//        }
 
-            } else {
+//        void on_close( )
+//        {
+//            on_close_( );
+//        }
 
-            }
-        }
-
-        void on_close( )
-        {
-            on_close_( );
-        }
-
-        application  *app_;
-        track_weak    track_;
-        void_call     on_close_;
-        call_type     call_;
-        cache_type    message_cache_;
-        service_cache cache_;
-    };
-
-    template <typename AcceptorType>
-    struct client_info_impl: public client_info {
-
-        using convertor     = acceptor_to_size_policy<AcceptorType>;
-        using size_policy   = typename convertor::policy;
-        using delegate_type = client_delegate<size_policy>;
-
-        std::unique_ptr<delegate_type>  client_;
-        transport_sptr                  t_;
-        parent_calls                    calls_;
-
-        ~client_info_impl( )
-        {
-            //std::cout << "client_info_impl dtor"  << std::endl;
-        }
-
-        transport_sptr transport( )
-        {
-            return t_;
-        }
-
-        bool post_message( lowlevel_sptr mess )
-        {
-            return false;
-        }
-
-        bool send_message( lowlevel_sptr mess )
-        {
-            return false;
-        }
-
-        lowlevel_sptr create_message( )
-        {
-            return client_->message_cache_.get( );
-        }
-
-        static
-        std::shared_ptr<client_info_impl<AcceptorType> > create( )
-        {
-            return std::make_shared<client_info_impl<AcceptorType> >( );
-        }
-
-        void reset_delegate( transport_type *t )
-        {
-            t_ = t->shared_from_this( );
-            client_.reset( new delegate_type( convertor::maxlen ) );
-            client_->assign_transport( t );
-            t->set_delegate( client_.get( ) );
-        }
-
-        void start( )
-        {
-            client_->get_transport( )->read( );
-        }
-
-        bool ready( )
-        {
-            return false;
-        }
-
-        void close( )
-        {
-            std::cout << "close!" << std::endl;
-            t_.reset( );
-        }
-
-        void set_calls( noname::client_info::calls_sptr calls )
-        {
-            calls_ = calls;
-        }
-
-        noname::client_info::calls_sptr get_calls( )
-        {
-            return calls_;
-        }
-
-    };
+//        application     *app_;
+//        void_call        on_close_;
+//        call_type        call_;
+//        cache_type       message_cache_;
+//        buf_cache_type   buf_cache_;
+//        client_info     *me_ = nullptr;
+//    };
 
     using namespace srpc;
     template <typename AcceptorType>
@@ -252,23 +172,7 @@ namespace {
             {
                 srpc::shared_ptr<parent_type> lck(lst_.lock( ));
                 if( lck ) {
-
-                    using my_client = client_info_impl<AcceptorType>;
-
-                    auto cli = my_client::create( );
-                    cli->reset_delegate( c );
-
-                    auto plist = lst_;
-                    std::weak_ptr<my_client> wcli = cli;
-
-                    cli->client_->on_close_ = [plist, wcli]( ) {
-                        srpc::shared_ptr<parent_type> lck(plist.lock( ));
-                        if( lck ) {
-                            lck->on_client_close( wcli.lock( ) );
-                        }
-                    };
-
-                    lck->on_accept( cli, addr, svc );
+                    lck->accept_call_( c, addr, svc );
                     lck->acceptor_->start_accept( );
                 }
             }
@@ -277,7 +181,7 @@ namespace {
             {
                 srpc::shared_ptr<parent_type> lck(lst_.lock( ));
                 if( lck ) {
-                    lck->on_accept_error( e );
+                    lck->error_call_( e );
                 }
             }
 
@@ -285,7 +189,7 @@ namespace {
             {
                 srpc::shared_ptr<parent_type> lck(lst_.lock( ));
                 if( lck ) {
-                    lck->on_close( );
+                    lck->close_call_( );
                 }
             }
 
@@ -351,23 +255,25 @@ namespace {
 
 namespace server {
     namespace tcp {
-        std::shared_ptr<interface> create( application *app,
-                                           const std::string &svc,
-                                           std::uint16_t port )
+        server_sptr create( application *app,
+                            std::string addr, std::uint16_t port )
         {
-            return impl<tcp_acceptor>::create( app, svc, port );
+            auto inst = impl<noname::tcp_acceptor>::create( app, addr, port );
+            return inst;
         }
     }
 
     namespace udp {
-        std::shared_ptr<interface> create( application *app,
-                                           const std::string &svc,
-                                           std::uint16_t port )
+        server_sptr create( application *app,
+                            std::string addr, std::uint16_t port )
         {
-            return impl<udp_acceptor>::create( app, svc, port );
+            auto inst = impl<noname::udp_acceptor>::create( app, addr, port );
+            return inst;
         }
     }
+
 }
+
 
 }}}
 

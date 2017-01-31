@@ -11,55 +11,68 @@
 #include "srpc/common/transport/interface.h"
 #include "srpc/common/transport/types.h"
 
-#include "noname-common.h"
 #include "application.h"
 #include "subsys-listener2.h"
 
+#include "noname-common.h"
+
 namespace msctl { namespace agent { namespace noname {
 
-    namespace server {
-        struct interface: public srpc::enable_shared_from_this<interface> {
+namespace server {
 
-        public:
+    class interface {
+    public:
 
-            using shared_type    = srpc::shared_ptr<interface>;
-            using error_code     = srpc::common::transport::error_code;
-            using io_service     = srpc::common::transport::io_service;
-            using acceptor_type  = srpc::server::acceptor::interface;
-            using client_sptr    = std::shared_ptr<client_info>;
+        using error_code        = srpc::common::transport::error_code;
+        using acceptor_type     = srpc::server::acceptor::interface;
+        using transport_type    = srpc::common::transport::interface;
+        using accept_call       = std::function<void ( transport_type *,
+                                                       const std::string&,
+                                                       std::uint16_t ) >;
 
-            SRPC_OBSERVER_DEFINE( on_accept, void (client_sptr,
-                                                   const std::string &,
-                                                   std::uint16_t) );
+        using accept_error      = std::function<void ( const error_code &) >;
+        using close_call        = std::function<void ( ) >;
 
-            SRPC_OBSERVER_DEFINE( on_client_close, void (client_sptr) );
-            SRPC_OBSERVER_DEFINE( on_accept_error, void (const error_code &) );
-            SRPC_OBSERVER_DEFINE( on_close, void ( ) );
+        virtual ~interface( ) { }
+        virtual acceptor_type *acceptor(  ) = 0;
+        virtual void start(  ) = 0;
+        virtual void stop(  ) = 0;
 
-        public:
-            virtual ~interface( ) { }
-
-            virtual void start( ) = 0;
-            virtual void stop(  ) = 0;
-            virtual acceptor_type *acceptor( ) = 0;
-        };
-
-        using server_ptr  = interface *;
-        using server_sptr = std::shared_ptr<interface>;
-        using server_wptr = std::weak_ptr<interface>;
-
-        namespace tcp {
-            server_sptr create( application *app,
-                                const std::string &svc,
-                                std::uint16_t port );
+        void assignt_accept_call( accept_call call )
+        {
+            accept_call_ = std::move(call);
         }
 
-        namespace udp {
-            server_sptr create( application *app,
-                                const std::string &svc,
-                                std::uint16_t port );
+        void assignt_error_call( accept_error call )
+        {
+            error_call_ = std::move(call);
         }
+
+        void assignt_close_call( close_call call )
+        {
+            close_call_ = std::move(call);
+        }
+
+    protected:
+        accept_call  accept_call_;
+        accept_error error_call_;
+        close_call   close_call_;
+    };
+
+    using server_sptr = std::shared_ptr<interface>;
+    using server_wptr = std::weak_ptr<interface>;
+
+    namespace tcp {
+        server_sptr create( application *app,
+                            std::string addr, std::uint16_t port );
     }
+
+    namespace udp {
+        server_sptr create( application *app,
+                            std::string addr, std::uint16_t port );
+    }
+
+}
 
 }}}
 

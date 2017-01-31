@@ -6,7 +6,6 @@
 
 #include "srpc/common/protocol/binary.h"
 
-#include "noname-common.h"
 #include "noname-client.h"
 
 #include "protocol/tuntap.pb.h"
@@ -46,8 +45,6 @@ namespace {
 
     using void_call = std::function<void (void)>;
 
-    using parent_calls = noname::client_info::calls_sptr;
-
     template <typename ConnectorType>
     struct impl: client::interface {
 
@@ -62,7 +59,7 @@ namespace {
         using transport_type  = srpc::common::transport::interface;
         using this_type       = impl<connector_type>;
 
-        using cache_type      = srpc::common::cache::simple<lowlevel_type>;
+//        using cache_type      = srpc::common::cache::simple<lowlevel_type>;
 
         using connector_delegate = srpc::client::connector::interface::delegate;
         using parent_delegate    = protocol_type<size_policy>;
@@ -98,18 +95,10 @@ namespace {
             void on_message_ready( tag_type t, buffer_type b,
                                    const_buffer_slice slice )
             {
-                auto ll = message_cache_.get( );
-                ll->ParseFromArray( slice.data( ), slice.size( ) );
-
-                if( ll->id( ) > 100 ) {
-
-                } else {
-
-                }
             }
 
             impl<ConnectorType> *parent_;
-            cache_type           message_cache_;
+            //cache_type           message_cache_;
 
         };
 
@@ -130,12 +119,12 @@ namespace {
                 using convertor_type = connector_to_size_policy<ConnectorType>;
                 static const size_t maxlen = convertor_type::maxlen;
 
-                parent_->transport_ = i->shared_from_this( );
-                parent_->proto_ =
-                        std::make_shared<protocol>( maxlen );
-                parent_->transport_->set_delegate( parent_->proto_.get( ) );
+                //parent_->transport_ = i->shared_from_this( );
+//                parent_->proto_ =
+//                        std::make_shared<protocol>( maxlen );
+//                parent_->transport_->set_delegate( parent_->proto_.get( ) );
 
-                parent_->transport_->read( );
+//                parent_->transport_->read( );
             }
 
             void on_connect_error( const error_code &err )
@@ -178,7 +167,6 @@ namespace {
         delegate        deleg_;
         protocol_sptr   proto_;
         connector_sptr  connector_;
-        transport_sptr  transport_;
     };
 }
 
