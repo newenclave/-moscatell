@@ -177,7 +177,7 @@ namespace {
                 }
             }
 
-            void on_accept_error( const error_code &e )
+            void on_accept_error( const server::error_code &e )
             {
                 srpc::shared_ptr<parent_type> lck(lst_.lock( ));
                 if( lck ) {

@@ -20,12 +20,13 @@ namespace msctl { namespace agent { namespace noname {
 
 namespace server {
 
-    class interface {
-    public:
+    using transport_type    = srpc::common::transport::interface;
+    using error_code        = srpc::common::transport::error_code;
+    using acceptor_type     = srpc::server::acceptor::interface;
 
-        using error_code        = srpc::common::transport::error_code;
-        using acceptor_type     = srpc::server::acceptor::interface;
-        using transport_type    = srpc::common::transport::interface;
+    class interface {
+
+    public:
         using accept_call       = std::function<void ( transport_type *,
                                                        const std::string&,
                                                        std::uint16_t ) >;
@@ -54,6 +55,7 @@ namespace server {
         }
 
     protected:
+
         accept_call  accept_call_;
         accept_error error_call_;
         close_call   close_call_;
