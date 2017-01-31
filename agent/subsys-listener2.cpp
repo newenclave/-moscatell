@@ -20,32 +20,33 @@ namespace msctl { namespace agent {
 namespace  {
 
     using utilities::decorators::quote;
+    using size_policy = noname::tcp_size_policy;
 
-    template <typename SizePolicy>
-    struct client_deledate: public noname::protocol_type<SizePolicy> {
+    struct client_deledate: public noname::protocol_type<size_policy> {
 
-        using parent_type        = noname::protocol_type<SizePolicy>;
-        using this_type          = client_deledate<SizePolicy>;
+        using parent_type        = noname::protocol_type<size_policy>;
+        using this_type          = client_deledate;
         using tag_type           = typename parent_type::tag_type;
         using buffer_type        = typename parent_type::buffer_type;
         using const_buffer_slice = typename parent_type::const_buffer_slice;
 
         using message_type       = noname::message_type;
 
-        using stub_type          = decltype(&this_type::call);
+        using stub_type          = std::function<bool (message_type &)>;
         using call_map           = std::map<std::string, stub_type>;
         using void_call          = std::function<void ( )>;
 
         client_deledate( size_t mexlen )
-            :parent_type(mexlen)
+            :parent_type( mexlen )
         { }
 
-        void call( message_type &mess )
+        bool call( message_type &mess )
         {
             auto f = calls_.find( mess.call( ) );
             if( f != calls_.end( ) ) {
-                (this->*(f->second))( mess );
+                return f->second( mess );
             }
+            return false;
         }
 
         void on_message_ready( tag_type, buffer_type,
@@ -57,16 +58,15 @@ namespace  {
             on_close_( );
         }
 
-        common::tuntap_transport *my_device_;
-        call_map                  calls_;
-        void_call                 on_close_;
+        common::tuntap_transport       *my_device_;
+        call_map                        calls_;
+        void_call                       on_close_;
     };
 
-    template <typename SizePolicy>
     struct device: public common::tuntap_transport {
 
-        using this_type   = device<SizePolicy>;
-        using client_type = client_deledate<SizePolicy>;
+        using this_type   = device;
+        using client_type = client_deledate;
         using client_sptr = std::shared_ptr<client_type>;
 
         using route_map   = std::map<std::uint32_t, client_sptr>;
@@ -105,15 +105,25 @@ namespace  {
     template <typename Acceptor>
     struct server_point {
 
-        using convertor = noname::acceptor_to_size_policy<Acceptor>;
-        using size_policy = typename convertor::policy;
+        using convertor   = noname::acceptor_to_size_policy<Acceptor>;
 
         using server_sptr  = noname::server::server_sptr;
-        using device_sptr  = std::shared_ptr<device<size_policy> >;
-        using client_proto = std::shared_ptr<client_deledate<size_policy> >;
+        using device_sptr  = std::shared_ptr<device>;
+        using client_proto = client_deledate;
+        using client_sptr  = std::shared_ptr<client_proto>;
 
         server_sptr service_;
         device_sptr device_;
+
+        client_sptr create_delegate( noname::server::transport_type *t )
+        {
+            auto inst = std::make_shared<client_proto>( convertor::maxlen );
+
+            t->set_delegate( inst.get( ) );
+            inst->assign_transport( t );
+
+            return inst;
+        }
 
     };
 
