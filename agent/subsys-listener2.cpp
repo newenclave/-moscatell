@@ -22,6 +22,8 @@ namespace  {
     using utilities::decorators::quote;
     using size_policy = noname::tcp_size_policy;
 
+    struct device;
+
     struct client_deledate: public noname::protocol_type<size_policy> {
 
         using parent_type        = noname::protocol_type<size_policy>;
@@ -58,9 +60,9 @@ namespace  {
             on_close_( );
         }
 
-        common::tuntap_transport       *my_device_;
-        call_map                        calls_;
-        void_call                       on_close_;
+        device       *my_device_ = nullptr;
+        call_map     calls_;
+        void_call    on_close_;
     };
 
     struct device: public common::tuntap_transport {
