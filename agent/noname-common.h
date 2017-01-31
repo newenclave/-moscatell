@@ -12,6 +12,7 @@
 
 namespace msctl { namespace agent { namespace noname {
 
+    using error_code       = srpc::common::transport::error_code;
     using message_type     = msctl::rpc::tuntap::tuntap_message;
     using message_sptr     = std::shared_ptr<message_type>;
 

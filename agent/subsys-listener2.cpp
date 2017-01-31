@@ -34,6 +34,11 @@ namespace  {
 
         using stub_type          = decltype(&this_type::call);
         using call_map           = std::map<std::string, stub_type>;
+        using void_call          = std::function<void ( )>;
+
+        client_deledate( size_t mexlen )
+            :parent_type(mexlen)
+        { }
 
         void call( message_type &mess )
         {
@@ -44,11 +49,17 @@ namespace  {
         }
 
         void on_message_ready( tag_type, buffer_type,
-                               const_buffer_slice )
+                               const_buffer_slice ) override
         { }
+
+        void on_close( ) override
+        {
+            on_close_( );
+        }
 
         common::tuntap_transport *my_device_;
         call_map                  calls_;
+        void_call                 on_close_;
     };
 
     template <typename SizePolicy>
@@ -67,25 +78,26 @@ namespace  {
                                        parent_type::OPT_DISPATCH_READ )
         { }
 
-        virtual void on_read( char *data, size_t length )
+        void on_read( char *data, size_t length ) override
         {
 
         }
 
-        virtual void on_read_error( const boost::system::error_code &/*code*/ )
+        void on_read_error( const noname::error_code & ) override
         {
 
         }
 
-        virtual void on_write_error( const boost::system::error_code &/*code*/ )
+        void on_write_error( const noname::error_code & ) override
         {
 
         }
 
-        virtual void on_write_exception(  )
+        void on_write_exception(  ) override
         {
             throw;
         }
+
 
         route_map routes_;
     };
