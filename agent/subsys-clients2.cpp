@@ -50,6 +50,7 @@ namespace {
         using buffer_slice       = typename parent_type::buffer_slice;
 
         using message_type       = noname::message_type;
+        using message_sptr       = noname::message_sptr;
 
         using stub_type          = std::function<bool (message_type &)>;
         using call_map           = std::map<std::string, stub_type>;
@@ -58,20 +59,68 @@ namespace {
         using bufer_cache        = srpc::common::cache::simple<std::string>;
         using message_cache      = srpc::common::cache::simple<message_type>;
 
+        using callbacks          = transport_type::write_callbacks;
+
         client_delegate( size_t mexlen )
             :parent_type( mexlen )
+            ,next_tag_(0)
+            ,next_id_(100)
         { }
 
         void on_message_ready( tag_type, buffer_type, const_buffer_slice )
         { }
 
-        void init( )
+        std::uint64_t next_id( )
         {
-
+            return next_id_++;
         }
 
-        device *my_device_            = nullptr;
-        transport_type *my_transport_ = nullptr;
+        std::uint64_t next_tag( )
+        {
+            return next_tag_++;
+        }
+
+        buffer_slice prepare_message( buffer_type buf, const message &mess )
+        {
+            typedef typename parent_type::size_policy size_policy;
+
+            auto tag = next_tag( );
+
+            buf->resize( size_policy::max_length );
+
+            const size_t old_len   = buf->size( );
+            const size_t hash_size = hash( )->length( );
+
+            tag_policy::append( tag, *buf );
+            mess.AppendToString( buf.get( ) );
+
+            buf->resize( buf->size( ) + hash_size );
+
+            hash( )->get( buf->c_str( ) + old_len,
+                          buf->size( ) - old_len - hash_size,
+                       &(*buf)[buf->size( ) - hash_size]);
+
+            buffer_slice res( &(*buf)[old_len], buf->size( ) - old_len );
+
+            buffer_slice packed = pack_message( buf, res );
+
+            return insert_size_prefix( buf, packed );
+        }
+
+        void init( )
+        {
+            message_sptr mess = std::make_shared<message_type>( );
+            mess->set_call( "Hello!" );
+            buffer_type buf = std::make_shared<std::string>( );
+            auto slice = prepare_message( buf, *mess );
+            get_transport( )->write( slice.data( ), slice.size( ),
+                                     callbacks::post([buf](...){ } ) );
+        }
+
+        device *my_device_ = nullptr;
+
+        std::atomic<std::uint64_t> next_tag_;
+        std::atomic<std::uint64_t> next_id_;
 
     };
 
@@ -110,10 +159,10 @@ namespace {
             c->assign_on_connect(
                 [this]( transport_type *t )
                 {
-                    transport_ = t->shared_from_this( );
-                    proto_     = std::make_shared<client_delegate>( 4096 );
+                    proto_ = std::make_shared<client_delegate>( 4096 );
+                    proto_->assign_transport( t );
                     t->set_delegate( proto_.get( ) );
-                    proto_->my_transport_ = transport_.get( );
+                    proto_->assign_transport( t );
                     proto_->init( );
 
                 } );
@@ -150,7 +199,6 @@ namespace {
             throw;
         }
 
-        std::shared_ptr<transport_type> transport_;
         proto_sptr                      proto_;
         noname::client::client_sptr     client_;
         std::string                     dev_name_;
