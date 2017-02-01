@@ -24,6 +24,8 @@ namespace  {
     using size_policy           = noname::tcp_size_policy;
     using server_create_info    = listener2::server_create_info;
     using error_code            = noname::error_code;
+    using transport_type        = noname::server::transport_type;
+
 
     template <typename T>
     std::uintptr_t uint_cast( const T *val )
@@ -51,6 +53,8 @@ namespace  {
 
         using bufer_cache        = srpc::common::cache::simple<std::string>;
         using message_cache      = srpc::common::cache::simple<message_type>;
+
+        using callbacks          = transport_type::write_callbacks;
 
         client_delegate( size_t mexlen )
             :parent_type( mexlen )
@@ -249,9 +253,27 @@ namespace  {
 
     ///////////// CLIENT IMPL
 
-    void client_delegate::on_message_ready( tag_type, buffer_type,
-                                            const_buffer_slice )
-    { }
+    void client_delegate::on_message_ready( tag_type t, buffer_type b,
+                                            const_buffer_slice slice )
+    {
+        message_type ll;
+        ll.ParseFromArray( slice.data( ), slice.size( ) );
+        std::cout << t << ": " << ll.DebugString( );
+
+        ll.set_call( "init" );
+
+        auto buf = std::make_shared<std::string>( );
+        auto sl = prepare_message( buf, ll );
+
+        get_transport( )->write( sl.data( ), sl.size( ),
+                callbacks::post([buf](error_code e, size_t l)
+                {
+                    std::cout << "send " << *buf << "\n"
+                                     << e.message( ) << "\n";
+                } ) );
+
+        //get_transport( )->close( );
+    }
 
     void client_delegate::on_close( )
     {
@@ -273,7 +295,7 @@ namespace  {
         server_sptr service_;
         device_sptr device_;
 
-        client_sptr create_delegate( noname::server::transport_type *t )
+        client_sptr create_delegate( transport_type *t )
         {
             auto inst = std::make_shared<client_proto>( convertor::maxlen );
 
@@ -287,8 +309,6 @@ namespace  {
 }
 
     struct listener2::impl {
-
-        using transport_type = noname::server::transport_type;
 
         impl( application *app )
             :app_(app)

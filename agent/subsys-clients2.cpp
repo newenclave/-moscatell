@@ -26,7 +26,6 @@ namespace {
     using io_service = SRPC_ASIO::io_service;
 
     using size_policy           = noname::tcp_size_policy;
-    using server_create_info    = listener2::server_create_info;
     using error_code            = noname::error_code;
     using transport_type        = noname::client::transport_type;
 
@@ -61,14 +60,68 @@ namespace {
 
         using callbacks          = transport_type::write_callbacks;
 
+        using push_call          = std::function<void(const char *, size_t)>;
+
+
         client_delegate( size_t mexlen )
             :parent_type( mexlen )
-            ,next_tag_(0)
+            ,next_tag_(1)
             ,next_id_(100)
-        { }
+        {
+            push_ = [this]( ... ){ };
+            calls_["init"] = [this]( message_type &mess )
+                             { return on_ready( mess ); };
+        }
 
-        void on_message_ready( tag_type, buffer_type, const_buffer_slice )
-        { }
+        bool call( message_type &mess )
+        {
+            auto f = calls_.find( mess.call( ) );
+            if( f != calls_.end( ) ) {
+                return f->second( mess );
+            }
+            return false;
+        }
+
+        bool on_ready( message_type &/*mess*/ )
+        {
+            ready_ = true;
+            calls_["push"] = [this]( message_type &mess )
+                             { return on_push( mess ); };
+
+            push_ = [this]( const char * d, size_t l){ send_impl( d, l ); };
+            return true;
+
+            std::cout << "Ready!!!\n";
+        }
+
+        bool on_push( message_type &mess );
+
+        void send( const char *data, size_t len )
+        {
+            push_( data, len );
+        }
+
+        void send_impl( const char *data, size_t d )
+        {
+            message_type mess;
+
+            mess.set_call( "push" );
+            mess.set_body( data, d );
+
+            buffer_type buf = std::make_shared<std::string>( );
+            auto slice = prepare_message( buf, mess );
+            get_transport( )->write( slice.data( ), slice.size( ),
+                                     callbacks::post([buf](...){ } ) );
+        }
+
+        void on_message_ready( tag_type t, buffer_type b,
+                               const_buffer_slice sl )
+        {
+            message_type mess;
+            mess.ParseFromArray( sl.data( ), sl.size( ) );
+            std::cout << "Got message " << mess.DebugString( ) << std::endl;
+            call( mess );
+        }
 
         std::uint64_t next_id( )
         {
@@ -110,11 +163,25 @@ namespace {
         void init( )
         {
             message_sptr mess = std::make_shared<message_type>( );
-            mess->set_call( "Hello!" );
+            mess->set_call( "I0" );
+            mess->set_body( "FUUUUUUUUUUUUUUUU!" );
+
             buffer_type buf = std::make_shared<std::string>( );
             auto slice = prepare_message( buf, *mess );
+
             get_transport( )->write( slice.data( ), slice.size( ),
                                      callbacks::post([buf](...){ } ) );
+            get_transport( )->read( );
+        }
+
+        bool ready( ) const
+        {
+            return ready_;
+        }
+
+        void on_error( const char *mess )
+        {
+            std::cout << "err " << mess << std::endl;
         }
 
         device *my_device_ = nullptr;
@@ -122,6 +189,12 @@ namespace {
         std::atomic<std::uint64_t> next_tag_;
         std::atomic<std::uint64_t> next_id_;
 
+        call_map  calls_;
+        push_call push_;
+
+        bool                    ready_ = false;
+//        std::condition_variable ready_var_;
+//        std::mutex              ready_lock_;
     };
 
     using proto_sptr = std::shared_ptr<client_delegate>;
@@ -206,6 +279,15 @@ namespace {
 
     using device_sptr = std::shared_ptr<device>;
     using device_map  = std::map<std::string, device_sptr>;
+
+    //////////////////////////// CLIENT IMPL
+
+    bool client_delegate::on_push( message_type &mess )
+    {
+        my_device_->write( mess.body( ).c_str( ), mess.body( ).size( ) );
+        return true;
+    }
+    ////////////////////////////////////////
 
 }
 
