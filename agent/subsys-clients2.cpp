@@ -28,6 +28,7 @@ namespace {
     using size_policy           = noname::tcp_size_policy;
     using server_create_info    = listener2::server_create_info;
     using error_code            = noname::error_code;
+    using transport_type        = noname::client::transport_type;
 
     template <typename T>
     std::uintptr_t uint_cast( const T *val )
@@ -39,22 +40,103 @@ namespace {
 
     struct client_delegate: public noname::protocol_type<size_policy> {
 
-        device *my_device_ = nullptr;
+        using message            = google::protobuf::Message;
+        using parent_type        = noname::protocol_type<size_policy>;
+        using this_type          = client_delegate;
+
+        using tag_type           = typename parent_type::tag_type;
+        using buffer_type        = typename parent_type::buffer_type;
+        using const_buffer_slice = typename parent_type::const_buffer_slice;
+        using buffer_slice       = typename parent_type::buffer_slice;
+
+        using message_type       = noname::message_type;
+
+        using stub_type          = std::function<bool (message_type &)>;
+        using call_map           = std::map<std::string, stub_type>;
+        using void_call          = std::function<void ( )>;
+
+        using bufer_cache        = srpc::common::cache::simple<std::string>;
+        using message_cache      = srpc::common::cache::simple<message_type>;
+
+        client_delegate( size_t mexlen )
+            :parent_type( mexlen )
+        { }
+
+        void on_message_ready( tag_type, buffer_type, const_buffer_slice )
+        { }
+
+        void init( )
+        {
+
+        }
+
+        device *my_device_            = nullptr;
+        transport_type *my_transport_ = nullptr;
+
     };
 
     using proto_sptr = std::shared_ptr<client_delegate>;
 
     struct device: public common::tuntap_transport {
 
+        using parent_type = common::tuntap_transport;
+
+        device( application *app )
+            :common::tuntap_transport( app->get_io_service( ), 2048,
+                                       parent_type::OPT_DISPATCH_READ )
+        { }
+
         void on_read( char *data, size_t length )
         {
 
         }
 
+        static
         std::shared_ptr<device> create( application *app,
                                         const client_create_info &inf )
         {
+            auto inst = std::make_shared<device>( app );
+            auto d = common::open_tun( inf.device );
 
+            inst->dev_name_ = d.name( );
+            inst->get_stream( ).assign( d.release( ) );
+
+            return inst;
+        }
+
+        void init( noname::client::client_sptr c )
+        {
+
+            c->assign_on_connect(
+                [this]( transport_type *t )
+                {
+                    transport_ = t->shared_from_this( );
+                    proto_     = std::make_shared<client_delegate>( 4096 );
+                    t->set_delegate( proto_.get( ) );
+                    proto_->my_transport_ = transport_.get( );
+                    proto_->init( );
+
+                } );
+
+            c->assign_on_error(
+                [this]( const error_code &err )
+                {
+                } );
+
+            c->assign_on_disconnect(
+                [this](  )
+                {
+
+                } );
+
+            client_.swap( c );
+
+        }
+
+        void start( )
+        {
+            start_read( );
+            client_->start( );
         }
 
         void on_read_error( const error_code &/*code*/ )
@@ -68,8 +150,10 @@ namespace {
             throw;
         }
 
-        proto_sptr                  proto_;
-        noname::client::client_sptr client_;
+        std::shared_ptr<transport_type> transport_;
+        proto_sptr                      proto_;
+        noname::client::client_sptr     client_;
+        std::string                     dev_name_;
     };
 
     using device_sptr = std::shared_ptr<device>;
@@ -93,6 +177,51 @@ namespace {
 
         void start_all( )
         {
+            for( auto &d: devs_ ) {
+                d.second->start( );
+            }
+        }
+
+        bool add_client( const client_create_info &inf, bool start )
+        {
+            try {
+
+                namespace nudp = noname::client::udp;
+                namespace ntcp = noname::client::tcp;
+
+                auto e = utilities::get_endpoint_info( inf.point );
+                if( e.is_ip( ) ) {
+
+                    auto cln = inf.udp
+                             ? nudp::create( app_, e.addpess, e.service )
+                             : ntcp::create( app_, e.addpess, e.service );
+
+                    auto dev = device::create( app_, inf );
+                    dev->init( cln );
+
+                    {
+                        std::lock_guard<std::mutex> lck(devs_lock_);
+                        auto res = devs_.insert(
+                                    std::make_pair( inf.device, dev ) );
+                        if( !res.second ) {
+                            LOGERR << "Failed to add device "
+                                   << quote(inf.device);
+                            return false;
+                        }
+                    }
+
+                    if( start ) {
+                        dev->start( );
+                    }
+
+                } else {
+                    LOGERR << "Invalid client format " << quote(inf.point);
+                    return false;
+                }
+
+            } catch( const std::exception &ex ) {
+                LOGERR << "Create client failed: " << ex.what( );
+            }
 
         }
     };
@@ -106,12 +235,7 @@ namespace {
 
     bool clients2::add_client( const client_create_info &inf, bool start )
     {
-        try {
-
-
-        } catch( const std::exception &ex ) {
-            impl_->LOGERR << "Create client failed " << ex.what( );
-        }
+        return impl_->add_client( inf, start );
     }
 
     void clients2::init( )

@@ -21,6 +21,7 @@ namespace msctl { namespace agent {
             std::string               device;
             std::string               id;
             common::create_parameters common;
+            bool                      udp = false;
         };
 
         clients2( application *app );

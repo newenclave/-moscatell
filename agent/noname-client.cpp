@@ -117,7 +117,7 @@ namespace client {
         }
     }
 
-    namespace ucp {
+    namespace udp {
         client_sptr create( application *app,
                             const std::string &svc,
                             std::uint16_t port )

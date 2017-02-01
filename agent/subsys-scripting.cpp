@@ -1,6 +1,8 @@
 
 #include "subsys-scripting.h"
+
 #include "subsys-clients.h"
+#include "subsys-clients2.h"
 
 #include "subsys-listener.h"
 #include "subsys-listener2.h"
@@ -285,7 +287,8 @@ namespace msctl { namespace agent {
             int res = 0;
             if( svc && svc->is_container( ) ) {
 
-                clients::client_create_info inf;
+                //clients::client_create_info inf;
+                clients2::client_create_info inf;
 
                 table_wrap tw(L, svc);
 
@@ -312,8 +315,10 @@ namespace msctl { namespace agent {
 
                 LOGDBG << "Adding new client: " << svc->str( );
 
-                ls.push(gs_application->subsys<clients>( )
+                ls.push(gs_application->subsys<clients2>( )
                                         .add_client( inf, false ) );
+//                ls.push(gs_application->subsys<clients>( )
+//                                        .add_client( inf, false ) );
 
                 res = 1;
             } else {

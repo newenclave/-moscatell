@@ -33,11 +33,11 @@ namespace  {
 
     struct device;
 
-    struct client_deledate: public noname::protocol_type<size_policy> {
+    struct client_delegate: public noname::protocol_type<size_policy> {
 
         using message            = google::protobuf::Message;
         using parent_type        = noname::protocol_type<size_policy>;
-        using this_type          = client_deledate;
+        using this_type          = client_delegate;
         using tag_type           = typename parent_type::tag_type;
         using buffer_type        = typename parent_type::buffer_type;
         using const_buffer_slice = typename parent_type::const_buffer_slice;
@@ -52,7 +52,7 @@ namespace  {
         using bufer_cache        = srpc::common::cache::simple<std::string>;
         using message_cache      = srpc::common::cache::simple<message_type>;
 
-        client_deledate( size_t mexlen )
+        client_delegate( size_t mexlen )
             :parent_type( mexlen )
             ,bcache_(10)
             ,mcache_(10)
@@ -124,8 +124,8 @@ namespace  {
         std::atomic<std::uint64_t> next_id_;
     };
 
-    using delegate_sptr = std::shared_ptr<client_deledate>;
-    using delegate_wptr = std::weak_ptr<client_deledate>;
+    using delegate_sptr = std::shared_ptr<client_delegate>;
+    using delegate_wptr = std::weak_ptr<client_delegate>;
 
     ///////////// DEVICE
     struct device: public common::tuntap_transport {
@@ -170,7 +170,7 @@ namespace  {
                 } );
         }
 
-        void del_client( client_deledate *deleg )
+        void del_client( client_delegate *deleg )
         {
             weak_type wptr( shared_from_this( ) );
             auto addr = deleg->my_ip_;
@@ -185,7 +185,7 @@ namespace  {
                 } );
         }
 
-        void register_client( client_deledate *deleg )
+        void register_client( client_delegate *deleg )
         {
             weak_type wptr( shared_from_this( ) );
 
@@ -249,11 +249,11 @@ namespace  {
 
     ///////////// CLIENT IMPL
 
-    void client_deledate::on_message_ready( tag_type, buffer_type,
+    void client_delegate::on_message_ready( tag_type, buffer_type,
                                             const_buffer_slice )
     { }
 
-    void client_deledate::on_close( )
+    void client_delegate::on_close( )
     {
         //on_close_( );
         my_device_->del_client( this );
@@ -267,7 +267,7 @@ namespace  {
         using convertor    = noname::acceptor_to_size_policy<Acceptor>;
         using server_sptr  = noname::server::server_sptr;
         using device_sptr  = std::shared_ptr<device>;
-        using client_proto = client_deledate;
+        using client_proto = client_delegate;
         using client_sptr  = std::shared_ptr<client_proto>;
 
         server_sptr service_;
@@ -300,7 +300,7 @@ namespace  {
         {
             try {
 
-                auto prot = std::make_shared<client_deledate>( 2048 );
+                auto prot = std::make_shared<client_delegate>( 2048 );
                 c->set_delegate( prot.get( ) );
                 prot->my_device_ = d;
                 prot->assign_transport( c );
