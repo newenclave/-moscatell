@@ -16,7 +16,7 @@ namespace msctl { namespace agent { namespace noname {
     using message_type     = msctl::rpc::tuntap::tuntap_message;
     using message_sptr     = std::shared_ptr<message_type>;
 
-    using tcp_size_policy  = srpc::common::sizepack::varint<size_t>;
+    using tcp_size_policy  = srpc::common::sizepack::varint<std::uint64_t>;
     using udp_size_policy  = srpc::common::sizepack::none;
 
     using tcp_connector    = srpc::client::connector::async::tcp;

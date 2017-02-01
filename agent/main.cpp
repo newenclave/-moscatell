@@ -42,6 +42,7 @@ namespace {
 
         app->subsys_add<listener>( );
         app->subsys_add<clients>( );
+
         app->subsys_add<listener2>( );
         app->subsys_add<clients2>( );
 

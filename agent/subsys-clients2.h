@@ -3,6 +3,7 @@
 #define SUBSYS_clients2_H
 
 #include "application.h"
+#include "common/create-params.h"
 
 namespace msctl { namespace agent {
 
@@ -14,10 +15,12 @@ namespace msctl { namespace agent {
 
     public:
 
-        struct calls {
-            virtual void register_ok( ) = 0;
-            virtual void push( ) = 0;
-            virtual void ping( ) = 0;
+        struct client_create_info {
+            std::string               name;
+            std::string               point;
+            std::string               device;
+            std::string               id;
+            common::create_parameters common;
         };
 
         clients2( application *app );
@@ -26,6 +29,8 @@ namespace msctl { namespace agent {
         {
             return "clients2";
         }
+
+        bool add_client( const client_create_info &inf, bool start );
 
     private:
 
