@@ -94,7 +94,7 @@ namespace {
             return slice;
         }
 
-        void on_message_ready( tag_type t, buffer_type b,
+        void on_message_ready( tag_type /*t*/, buffer_type /*b*/,
                                const_buffer_slice sl )
         {
             auto mess = mcache_.get( );
@@ -139,6 +139,7 @@ namespace {
             :common::tuntap_transport( app->get_io_service( ), 2048,
                                        parent_type::OPT_DISPATCH_READ )
             ,app_(app)
+            ,log_(app->log( ))
         { }
 
         void on_read( char *data, size_t length )
@@ -177,8 +178,9 @@ namespace {
                 } );
 
             c->assign_on_error(
-                [this]( const error_code &err )
+                [this]( const error_code & err )
                 {
+                    LOGERR << "Client error " << err.message( );
                 } );
 
             c->assign_on_disconnect(
@@ -208,6 +210,7 @@ namespace {
         }
 
         application                    *app_;
+        logger_impl                    &log_;
         proto_sptr                      proto_;
         noname::client::client_sptr     client_;
         std::string                     dev_name_;
