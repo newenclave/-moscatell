@@ -25,7 +25,7 @@ namespace msctl { namespace agent {
             utilities::address_v4_poll      addr_poll;
             bool                            mcast       = true;
             bool                            bcast       = false;
-            bool                            udp         = false;
+            bool                            udp         = true;
             common::create_parameters       common;
         };
 
