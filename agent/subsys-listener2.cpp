@@ -185,7 +185,7 @@ namespace  {
                             auto inst = f->second;
                             tmp_clients_.erase( f );
 
-                            auto addr = inst->my_ip_;
+                            auto addr = htonl( inst->my_ip_ );
                             routes_.insert( std::make_pair( addr, inst ) );
                         }
                     }
@@ -198,12 +198,6 @@ namespace  {
             mess->set_call( "push" );
             mess->set_body( data, length );
             auto srcdst = common::extract_ip_v4( data, length );
-
-            LOGINF << "Got "
-                   << address_v4(srcdst.first).to_string( )
-                   << " "
-                   << address_v4(srcdst.second).to_string( )
-                   ;
 
             if( srcdst.second ) {
 
