@@ -74,8 +74,8 @@ namespace  {
             return slice;
         }
 
-        application    *app_;
-        device         *my_device_ = nullptr;
+        application             *app_;
+        std::shared_ptr<device>  my_device_;
 
         std::uint32_t   my_ip_   = 0;
         std::uint16_t   my_mask_ = 0;
@@ -227,7 +227,6 @@ namespace  {
         client_set                    tmp_clients_;
 
         std::string                   device_name_;
-        noname::server::server_sptr   server_;
 
         ipcache_map                   ips_;
 
@@ -236,7 +235,10 @@ namespace  {
     };
 
     using device_sptr = std::shared_ptr<device>;
-    using device_map  = std::map<std::string, device_sptr>;
+    using device_wptr = std::weak_ptr<device>;
+    using device_map  = std::map<std::string, device_wptr>;
+
+    using servers_map = std::map<std::string, noname::server::server_sptr>;
 
     ///////////// CLIENT IMPL
 
@@ -310,16 +312,16 @@ namespace  {
             ,log_(app_->log( ))
         { }
 
-        void on_new_client( device *d, transport_type *c,
+        void on_new_client( device_sptr dev, transport_type *c,
                             std::string addr, std::uint16_t svc, bool udp )
         {
             try {
 
                 auto prot = std::make_shared<client_delegate>( app_, 2048 );
                 c->set_delegate( prot.get( ) );
-                prot->my_device_ = d;
+                prot->my_device_ = dev;
                 prot->assign_transport( c );
-                d->add_tmp_client( prot );
+                dev->add_tmp_client( prot );
 
             } catch( const std::exception &ex ) {
                 LOGERR << "Failed to create protocol for client "
@@ -327,14 +329,32 @@ namespace  {
             }
         }
 
-        void on_error( device *d, const noname::server::error_code &e )
+        void on_error( device_sptr dev, const noname::server::error_code &e )
         {
             std::cout << "Error " << e.message( ) << "\n";
         }
 
-        void on_close( device *d )
+        void on_close( device_sptr dev )
         {
             std::cout << "Close\n";
+        }
+
+        device_sptr get_device( const listener2::server_create_info &inf )
+        {
+            device_sptr dev;
+            std::lock_guard<std::mutex> lck(devs_lock_);
+            auto f = devs_.find( inf.device );
+            if( f != devs_.end( ) ) {
+                dev = f->second.lock( );
+                if( !dev ) {
+                    dev = device::create( app_, inf );
+                    f->second = dev;
+                }
+            } else {
+                dev = device::create( app_, inf );
+                devs_[inf.device] = dev;
+            }
+            return dev;
         }
 
         bool add_server( const listener2::server_create_info &inf,
@@ -353,42 +373,40 @@ namespace  {
                             ? nudp::create( app_, e.addpess, e.service )
                             : ntcp::create( app_, e.addpess, e.service );
 
-                    auto dev = device::create( app_, inf );
+                    auto dev = get_device( inf );
 
                     {
-                        std::lock_guard<std::mutex> lck(devs_lock_);
-                        auto res = devs_.insert(
-                                    std::make_pair(dev->device_name_, dev) );
+                        std::lock_guard<std::mutex> lck(serv_lock_);
+                        auto res = serv_.insert(
+                                         std::make_pair(inf.point, svc) );
                         if( !res.second ) {
-                            LOGERR << "Device is already open "
-                                   << quote(inf.device);
+                            LOGERR << "Server is already open "
+                                   << quote(inf.point);
                             return false;
                         }
                     }
 
-                    dev->server_ = svc;
-                    auto devptr  = dev.get( );
                     bool is_udp  = inf.udp;
 
                     svc->assignt_accept_call(
-                        [this, devptr, is_udp]( transport_type *t,
-                                                const std::string &addr,
-                                                std::uint16_t port )
+                        [this, dev, is_udp]( transport_type *t,
+                                             const std::string &addr,
+                                             std::uint16_t port )
                         {
-                            this->on_new_client( devptr, t, addr, port,
+                            this->on_new_client( dev, t, addr, port,
                                                  is_udp );
                         } );
 
                     svc->assignt_error_call(
-                        [this, devptr]( const error_code &e )
+                        [this, dev]( const error_code &e )
                         {
-                            this->on_error( devptr, e );
+                            this->on_error( dev, e );
                         } );
 
                     svc->assignt_close_call(
-                        [this, devptr]( )
+                        [this, dev]( )
                         {
-                            this->on_close( devptr );
+                            this->on_close( dev );
                         } );
 
                     if( start ) {
@@ -413,8 +431,14 @@ namespace  {
         void start_all( )
         {
             for( auto &d: devs_ ) {
-                d.second->start_read( );
-                d.second->server_->start( );
+                auto dev = d.second.lock( );
+                if( dev ) {
+                    dev->start_read( );
+                }
+            }
+
+            for( auto &d: serv_ ) {
+                d.second->start( );
             }
         }
 
@@ -424,6 +448,9 @@ namespace  {
 
         device_map    devs_;
         std::mutex    devs_lock_;
+
+        servers_map   serv_;
+        std::mutex    serv_lock_;
     };
 
     listener2::listener2( application *app )
