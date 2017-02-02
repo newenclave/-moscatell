@@ -39,8 +39,9 @@ namespace {
 
         using push_call          = std::function<void(const char *, size_t)>;
 
-        client_delegate( size_t mexlen )
+        client_delegate( application *app, size_t mexlen )
             :parent_type( mexlen )
+            ,app_(app)
         {
             push_ = [this]( ... ){ };
             calls_["init"] = [this]( message_sptr &mess )
@@ -121,6 +122,7 @@ namespace {
             std::cout << "err " << mess << std::endl;
         }
 
+        application *app_;
         device      *my_device_ = nullptr;
         push_call    push_;
         bool         ready_     = false;
@@ -138,6 +140,7 @@ namespace {
         device( application *app )
             :common::tuntap_transport( app->get_io_service( ), 2048,
                                        parent_type::OPT_DISPATCH_READ )
+            ,app_(app)
         { }
 
         void on_read( char *data, size_t length )
@@ -166,7 +169,7 @@ namespace {
             c->assign_on_connect(
                 [this]( transport_type *t )
                 {
-                    proto_ = std::make_shared<client_delegate>( 4096 );
+                    proto_ = std::make_shared<client_delegate>( app_, 4096 );
                     proto_->my_device_ = this;
                     proto_->assign_transport( t );
                     t->set_delegate( proto_.get( ) );
@@ -206,6 +209,7 @@ namespace {
             throw;
         }
 
+        application                    *app_;
         proto_sptr                      proto_;
         noname::client::client_sptr     client_;
         std::string                     dev_name_;
@@ -238,48 +242,51 @@ namespace {
 
     bool client_delegate::on_register_ok( message_sptr &mess )
     {
-        mcache_.push( mess );
+        try {
+            rpc::tuntap::register_res res;
 
-        rpc::tuntap::register_res res;
+            res.ParseFromString( mess->body( ) );
 
-        res.ParseFromString( mess->body( ) );
+            auto naddr  = ntohl( res.iface_addr( ).v4_saddr( ));
+            auto ndaddr = ntohl( res.iface_addr( ).v4_daddr( ));
+            auto nmask  = ntohl( res.iface_addr( ).v4_mask( ));
 
-        auto naddr  = ntohl( res.iface_addr( ).v4_saddr( ));
-        auto ndaddr = ntohl( res.iface_addr( ).v4_daddr( ));
-        auto nmask  = ntohl( res.iface_addr( ).v4_mask( ));
+            address_v4 saddr(naddr);
+            address_v4 daddr(ndaddr);
+            address_v4 mask(nmask);
 
-        address_v4 saddr(naddr);
-        address_v4 daddr(ndaddr);
-        address_v4 mask(nmask);
+            std::cout << "Got address: "
+                   << quote(saddr.to_string( )
+                            + "->"
+                            + daddr.to_string( ))
+                   << " and mask: " << quote(mask.to_string( )) << std::endl;
 
-        std::cout << "Got address: "
-               << quote(saddr.to_string( )
-                        + "->"
-                        + daddr.to_string( ))
-               << " and mask: " << quote(mask.to_string( ));
+            auto hdl = my_device_->get_stream( ).native_handle( );
 
-        auto hdl = my_device_->get_stream( ).native_handle( );
+            clients2::register_info reginfo;
 
-        clients2::register_info reginfo;
+            reginfo.ip        = saddr.to_string( );
+            reginfo.mask      = mask.to_string( );
+            reginfo.server_ip = daddr.to_string( );
 
-        reginfo.ip        = saddr.to_string( );
-        reginfo.mask      = mask.to_string( );
-        reginfo.server_ip = daddr.to_string( );
+            common::setup_device( hdl, my_device_->dev_name_,
+                                  reginfo.ip,
+                                  reginfo.server_ip,
+                                  reginfo.mask );
 
-        common::setup_device( hdl, my_device_->dev_name_,
-                              reginfo.ip,
-                              reginfo.server_ip,
-                              reginfo.mask );
+    //        cli->new_client_registered( clnt_->shared_from_this( ),
+    //                                    *devhint_, reginfo );
 
-//        cli->new_client_registered( clnt_->shared_from_this( ),
-//                                    *devhint_, reginfo );
+            ready_ = true;
+            my_device_->start_read( );
 
-        ready_ = true;
-        my_device_->start_read( );
+            std::cout << "Device " << quote(my_device_->dev_name_)
+                      << " setup success.";
 
-        std::cout << "Device " << quote(my_device_->dev_name_)
-                  << " setup success.";
-
+            mcache_.push( mess );
+        } catch( const std::exception &ex ) {
+            std::cerr << "Error ok " << ex.what( ) << "\n";
+        }
 
         return true;
     }

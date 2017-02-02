@@ -28,14 +28,18 @@ namespace  {
     using error_code            = noname::error_code;
     using transport_type        = noname::server::transport_type;
 
+    namespace uip   = utilities::ip;
+    namespace uipv4 = uip::v4;
+
     struct device;
 
     struct client_delegate: public noname::transport_delegate {
 
         using parent_type = noname::transport_delegate;
 
-        client_delegate( size_t mexlen )
+        client_delegate( application *app, size_t mexlen )
             :parent_type( mexlen )
+            ,app_(app)
         {
             calls_["init"] = [this]( message_sptr &mess )
                              { return on_init( mess ); };
@@ -70,6 +74,7 @@ namespace  {
             return slice;
         }
 
+        application    *app_;
         device         *my_device_ = nullptr;
 
         std::uint32_t   my_ip_   = 0;
@@ -96,8 +101,7 @@ namespace  {
             ,app_(app)
             ,log_(app->log( ))
             ,poll_(poll)
-        {
-        }
+        { }
 
         static
         std::shared_ptr<device> create( application *app,
@@ -177,6 +181,26 @@ namespace  {
 
         void on_read( char *data, size_t length ) override
         {
+            auto mess = std::make_shared<noname::message_type>( );
+            mess->set_call( "push" );
+            mess->set_body( data, length );
+            auto srcdst = common::extract_ip_v4( data, length );
+            if( srcdst.second ) {
+
+                //std::cerr << std::hex << (srcdst.second & 0xFF000000) << "\n";
+
+                if( uipv4::is_multicast( ntohl( srcdst.second ) ) ) {
+
+                    for( auto &r: routes_ ) {
+                        r.second->send_message( mess );
+                    }
+                } else {
+                    auto f = routes_.find( srcdst.second );
+                    if( f != routes_.end( ) ) {
+                        f->second->send_message( mess );
+                    }
+                }
+            }
 
         }
 
@@ -188,11 +212,6 @@ namespace  {
         void on_write_error( const error_code & ) override
         {
 
-        }
-
-        std::uint32_t next_ip4( )
-        {
-            return poll_.next( );
         }
 
         void on_write_exception(  ) override
@@ -227,7 +246,7 @@ namespace  {
         auto mess = mcache_.get( );
         mess->ParseFromArray( slice.data( ),
                               slice.size( ) );
-        std::cout << "Got message " << mess->DebugString( ) << std::endl;
+        //std::cout << "Got message " << mess->DebugString( ) << std::endl;
         call( mess );
         //get_transport( )->close( );
     }
@@ -253,7 +272,7 @@ namespace  {
         name_ = req.name( );
 
         rpc::tuntap::register_res res;
-        res.mutable_iface_addr( )->set_v4_saddr( my_ip_   );
+        res.mutable_iface_addr( )->set_v4_saddr( htonl(my_ip_) );
         res.mutable_iface_addr( )->set_v4_mask ( my_mask_ );
         res.mutable_iface_addr( )->set_v4_daddr( my_addr  );
 
@@ -296,7 +315,7 @@ namespace  {
         {
             try {
 
-                auto prot = std::make_shared<client_delegate>( 2048 );
+                auto prot = std::make_shared<client_delegate>( app_, 2048 );
                 c->set_delegate( prot.get( ) );
                 prot->my_device_ = d;
                 prot->assign_transport( c );
