@@ -103,10 +103,19 @@ namespace  {
             ,poll_(poll)
         { }
 
+        ~device( )
+        {
+            LOGINF << "Destroy device " << device_name_
+                   << " address: " << addr_.to_string( )
+                   << " mask: " << mask_.to_string( )
+                   ;
+        }
+
         static
         std::shared_ptr<device> create( application *app,
                                         const server_create_info &inf )
         {
+            auto &log_(app->log( ));
             auto inst = std::make_shared<device>( app, inf.addr_poll );
             auto hdl  = common::open_tun( inf.device );
 
@@ -123,6 +132,10 @@ namespace  {
             inst->device_name_ = hdl.name( );
             inst->get_stream( ).assign( hdl.release( ) );
 
+            LOGINF << "Create new device " << quote(inf.device)
+                   << " address: " << inst->addr_.to_string( )
+                   << " mask: " << inst->mask_.to_string( )
+                   ;
             return inst;
         }
 
@@ -293,6 +306,7 @@ namespace  {
     {
         my_device_->write( mess->body( ) );
         mcache_.push( mess );
+        return true;
     }
 
     void client_delegate::on_close( )
@@ -313,7 +327,7 @@ namespace  {
         { }
 
         void on_new_client( device_sptr dev, transport_type *c,
-                            std::string addr, std::uint16_t svc, bool udp )
+                            std::string addr, std::uint16_t svc, bool /*udp*/ )
         {
             try {
 
