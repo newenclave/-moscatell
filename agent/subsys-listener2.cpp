@@ -54,6 +54,7 @@ namespace  {
         {
             send_message( mess );
             mcache_.push( mess );
+            return true;
         }
 
         bool on_register_me( message_sptr &mess );
@@ -301,6 +302,7 @@ namespace  {
 
         calls_["push"] = [this]( message_sptr &mess )
                          { return on_push( mess ); };
+        return true;
     }
 
     bool client_delegate::on_push( message_sptr &mess )
@@ -344,14 +346,21 @@ namespace  {
             }
         }
 
-        void on_error( device_sptr dev, const noname::server::error_code &e )
+        void on_error( device_sptr dev,
+                       const noname::server::error_code &e,
+                       const std::string &point_name )
         {
-            std::cout << "Error " << e.message( ) << "\n";
+            LOGERR << "Accept " << point_name << " error: " << e.message( )
+                   << " for device " << dev->device_name_
+                      ;
         }
 
-        void on_close( device_sptr dev )
+        void on_close( device_sptr dev,
+                       const std::string &point_name )
         {
-            std::cout << "Close\n";
+            LOGERR << "Close server " << point_name
+                   <<  " for device " << dev->device_name_
+                   ;
         }
 
         device_sptr get_device( const listener2::server_create_info &inf )
@@ -402,6 +411,7 @@ namespace  {
                     }
 
                     bool is_udp  = inf.udp;
+                    std::string point_name = inf.point;
 
                     svc->assignt_accept_call(
                         [this, dev, is_udp]( transport_type *t,
@@ -413,15 +423,15 @@ namespace  {
                         } );
 
                     svc->assignt_error_call(
-                        [this, dev]( const error_code &e )
+                        [this, dev, point_name]( const error_code &e )
                         {
-                            this->on_error( dev, e );
+                            this->on_error( dev, e, point_name );
                         } );
 
                     svc->assignt_close_call(
-                        [this, dev]( )
+                        [this, dev, point_name]( )
                         {
-                            this->on_close( dev );
+                            this->on_close( dev, point_name );
                         } );
 
                     if( start ) {

@@ -361,8 +361,9 @@ namespace {
 
             } catch( const std::exception &ex ) {
                 LOGERR << "Create client failed: " << ex.what( );
+                return false;
             }
-
+            return true;
         }
     };
 
