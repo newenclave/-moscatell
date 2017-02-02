@@ -9,8 +9,12 @@
 #include "srpc/client/connector/async/tcp.h"
 #include "srpc/client/connector/async/udp.h"
 
+#include "srpc/common/timers/periodical.h"
+
 #include "srpc/server/acceptor/async/tcp.h"
 #include "srpc/server/acceptor/async/udp.h"
+
+#include "application.h"
 
 namespace msctl { namespace agent { namespace noname {
 
@@ -91,19 +95,38 @@ namespace msctl { namespace agent { namespace noname {
 
         using callbacks          = transport_type::write_callbacks;
 
-        transport_delegate( size_t mexlen )
+        transport_delegate( SRPC_ASIO::io_service &ios, size_t mexlen )
             :parent_type( mexlen )
             ,bcache_(10)
             ,mcache_(10)
             ,next_tag_(0)
             ,next_id_(100)
-        { }
+            ,keepout_(ios)
+        {
+            last_tick_ = application::tick_count( );
+            call_[""] = [ ]( ... ){ return true; };
+
+            keepout_.call(
+                [this]( const error_code &e )
+                {
+                    if( !e ) {
+                        auto now = application::now( );
+                        if( now - last_tick_ > 180 * 1000 * 1000 ) {
+                            on_timeout( );
+                        }
+                    }
+                }, std::chrono::seconds( 30 ) );
+        }
 
         virtual ~transport_delegate( )
         { }
 
+        virtual void on_timeout( )
+        { }
+
         bool call( message_sptr &mess )
         {
+            last_tick_ = application::tick_count( );
             auto f = calls_.find( mess->call( ) );
             if( f != calls_.end( ) ) {
                 return f->second( mess );
@@ -182,6 +205,9 @@ namespace msctl { namespace agent { namespace noname {
 
         std::atomic<std::uint64_t> next_tag_;
         std::atomic<std::uint64_t> next_id_;
+
+        srpc::common::timers::periodical keepout_;
+        std::uint64_t                    last_tick_;
     };
 
 

@@ -38,7 +38,7 @@ namespace  {
         using parent_type = noname::transport_delegate;
 
         client_delegate( application *app, size_t mexlen )
-            :parent_type( mexlen )
+            :parent_type(app->get_rpc_service( ), mexlen )
             ,app_(app)
         {
             calls_["init"] = [this]( message_sptr &mess )

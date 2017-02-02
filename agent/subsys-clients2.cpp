@@ -40,7 +40,7 @@ namespace {
         using push_call          = std::function<void(const char *, size_t)>;
 
         client_delegate( application *app, size_t mexlen )
-            :parent_type( mexlen )
+            :parent_type(app->get_rpc_service( ), mexlen )
             ,app_(app)
         {
             push_ = [this]( ... ){ };

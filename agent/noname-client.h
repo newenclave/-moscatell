@@ -11,6 +11,8 @@
 #include "srpc/common/transport/interface.h"
 #include "srpc/common/transport/types.h"
 
+#include "srpc/common/timers/periodical.h"
+
 #include "application.h"
 #include "subsys-listener2.h"
 
@@ -61,7 +63,6 @@ namespace client {
         connect_call    on_connect_;
         disconnect_call on_disconnect_;
         error_call      on_error_;
-
     };
 
     using client_sptr = std::shared_ptr<interface>;
