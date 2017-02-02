@@ -72,7 +72,6 @@ namespace {
 
         void send( const char *data, size_t len )
         {
-            std::cout << "Send!\n";
             push_( data, len );
         }
 
@@ -100,7 +99,6 @@ namespace {
         {
             auto mess = mcache_.get( );
             mess->ParseFromArray( sl.data( ), sl.size( ) );
-            std::cout << "Got message " << mess->DebugString( ) << std::endl;
             call( mess );
         }
 
