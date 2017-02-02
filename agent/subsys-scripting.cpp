@@ -148,6 +148,21 @@ namespace msctl { namespace agent {
                 inf.device                = tw["dev"].as_string( );
                 //inf.ll_opts.hello_message = tw["txt.hello"].as_string( );
 
+                auto proto  = tw["proto"].as_string( );
+
+                if( !proto.empty( ) ) {
+                    if( proto == "udp" ) {
+                        inf.udp = true;
+                    } else if( proto == "tcp" ) {
+                        inf.udp = false;
+                    } else {
+                        LOGERR << "Invalid protocol " << proto << " for server";
+                        ls.push( );
+                        ls.push( "Bad protocol name." );
+                        return 2;
+                    }
+                }
+
                 scripts::get_common_opts( tw["options"], inf.common );
 
                 auto addr_poll  = tw["addr_poll"].as_string( );
@@ -292,9 +307,24 @@ namespace msctl { namespace agent {
 
                 table_wrap tw(L, svc);
 
-                inf.point  = tw["addr"].as_string( );
-                inf.device = tw["dev"].as_string( );
-                inf.id     = tw["id"].as_string( );
+                inf.point   = tw["addr"].as_string( );
+                inf.device  = tw["dev"].as_string( );
+                inf.id      = tw["id"].as_string( );
+
+                auto proto  = tw["proto"].as_string( );
+
+                if( !proto.empty( ) ) {
+                    if( proto == "udp" ) {
+                        inf.udp = true;
+                    } else if( proto == "tcp" ) {
+                        inf.udp = false;
+                    } else {
+                        LOGERR << "Invalid protocol " << proto << " for client";
+                        ls.push( );
+                        ls.push( "Bad protocol name." );
+                        return 2;
+                    }
+                }
 
                 scripts::get_common_opts( tw["options"],    inf.common );
                 scripts::add_function( tw, "on_register",   inf.common );

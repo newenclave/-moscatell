@@ -59,7 +59,6 @@ namespace {
             push_ = [this]( const char * d, size_t l)
                     { send_impl( d, l ); };
 
-            std::cout << "Ready!\n";
             send_register_me( mess );
 
             return true;
