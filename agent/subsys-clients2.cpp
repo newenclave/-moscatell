@@ -240,7 +240,10 @@ namespace {
 
     bool client_delegate::on_register_ok( message_sptr &mess )
     {
+        static auto &log_(app_->log( ));
+
         try {
+
             rpc::tuntap::register_res res;
 
             res.ParseFromString( mess->body( ) );
@@ -253,11 +256,12 @@ namespace {
             address_v4 daddr(ndaddr);
             address_v4 mask(nmask);
 
-            std::cout << "Got address: "
+            LOGINF << "Got address: "
                    << quote(saddr.to_string( )
                             + "->"
                             + daddr.to_string( ))
-                   << " and mask: " << quote(mask.to_string( )) << std::endl;
+                   << " and mask: " << quote(mask.to_string( ))
+                      ;
 
             auto hdl = my_device_->get_stream( ).native_handle( );
 
@@ -278,12 +282,13 @@ namespace {
             ready_ = true;
             my_device_->start_read( );
 
-            std::cout << "Device " << quote(my_device_->dev_name_)
-                      << " setup success.";
+            LOGINF << "Device " << quote(my_device_->dev_name_)
+                   << " setup success.";
 
             mcache_.push( mess );
         } catch( const std::exception &ex ) {
-            std::cerr << "Error ok " << ex.what( ) << "\n";
+            LOGERR << "Device setup failed: " << ex.what( ) << "\n";
+            get_transport( )->close( );
         }
 
         return true;
@@ -390,4 +395,3 @@ namespace {
     }
 }}
 
-		
