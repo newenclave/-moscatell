@@ -447,6 +447,7 @@ namespace  {
             for( auto &d: devs_ ) {
                 auto dev = d.second.lock( );
                 if( dev ) {
+                    LOGINF << "Starting " << quote(dev->device_name_);
                     dev->start_read( );
                 }
             }
