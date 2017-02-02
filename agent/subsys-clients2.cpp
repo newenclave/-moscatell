@@ -20,6 +20,7 @@ namespace msctl { namespace agent {
 
 namespace {
 
+    using namespace SRPC_ASIO::ip;
     using client_create_info = clients2::client_create_info;
     using utilities::decorators::quote;
     using error_code = srpc::common::transport::error_code;
@@ -29,148 +30,84 @@ namespace {
     using error_code            = noname::error_code;
     using transport_type        = noname::client::transport_type;
 
-    template <typename T>
-    std::uintptr_t uint_cast( const T *val )
-    {
-        return reinterpret_cast<std::uintptr_t>(val);
-    }
-
     struct device;
 
-    struct client_delegate: public noname::protocol_type<size_policy> {
+    struct client_delegate: public noname::transport_delegate {
 
-        using message            = google::protobuf::Message;
-        using parent_type        = noname::protocol_type<size_policy>;
+        using parent_type        = noname::transport_delegate;
         using this_type          = client_delegate;
-
-        using tag_type           = typename parent_type::tag_type;
-        using buffer_type        = typename parent_type::buffer_type;
-        using const_buffer_slice = typename parent_type::const_buffer_slice;
-        using buffer_slice       = typename parent_type::buffer_slice;
-
-        using message_type       = noname::message_type;
-        using message_sptr       = noname::message_sptr;
-
-        using stub_type          = std::function<bool (message_type &)>;
-        using call_map           = std::map<std::string, stub_type>;
-        using void_call          = std::function<void ( )>;
-
-        using bufer_cache        = srpc::common::cache::simple<std::string>;
-        using message_cache      = srpc::common::cache::simple<message_type>;
-
-        using callbacks          = transport_type::write_callbacks;
 
         using push_call          = std::function<void(const char *, size_t)>;
 
-
         client_delegate( size_t mexlen )
             :parent_type( mexlen )
-            ,next_tag_(1)
-            ,next_id_(100)
         {
             push_ = [this]( ... ){ };
-            calls_["init"] = [this]( message_type &mess )
+            calls_["init"] = [this]( message_sptr &mess )
                              { return on_ready( mess ); };
         }
 
-        bool call( message_type &mess )
+        bool on_ready( message_sptr &mess )
         {
-            auto f = calls_.find( mess.call( ) );
-            if( f != calls_.end( ) ) {
-                return f->second( mess );
-            }
-            return false;
-        }
-
-        bool on_ready( message_type &/*mess*/ )
-        {
-            ready_ = true;
-            calls_["push"] = [this]( message_type &mess )
+            calls_["push"] = [this]( message_sptr &mess )
                              { return on_push( mess ); };
 
-            push_ = [this]( const char * d, size_t l){ send_impl( d, l ); };
-            return true;
+            calls_["regok"] = [this]( message_sptr &mess )
+                              { return on_register_ok( mess ); };
 
-            std::cout << "Ready!!!\n";
+            push_ = [this]( const char * d, size_t l)
+                    { send_impl( d, l ); };
+
+            std::cout << "Ready!\n";
+            send_register_me( mess );
+
+            return true;
         }
 
-        bool on_push( message_type &mess );
+        void send_register_me( message_sptr &mess );
+
+        bool on_push( message_sptr &mess );
+        bool on_register_ok( message_sptr &mess );
 
         void send( const char *data, size_t len )
         {
+            std::cout << "Send!\n";
             push_( data, len );
         }
 
-        void send_impl( const char *data, size_t d )
+        void send_impl( const char *data, size_t len )
         {
-            message_type mess;
+            auto mess = mcache_.get( );
+            mess->clear_err( );
+            mess->set_call( "push" );
+            mess->set_body( data, len );
+            send_message( mess );
+        }
 
-            mess.set_call( "push" );
-            mess.set_body( data, d );
+        buffer_type unpack_message( const_buffer_slice & ) override
+        {
+            return buffer_type( );
+        }
 
-            buffer_type buf = std::make_shared<std::string>( );
-            auto slice = prepare_message( buf, mess );
-            get_transport( )->write( slice.data( ), slice.size( ),
-                                     callbacks::post([buf](...){ } ) );
+        buffer_slice pack_message( buffer_type, buffer_slice slice ) override
+        {
+            return slice;
         }
 
         void on_message_ready( tag_type t, buffer_type b,
                                const_buffer_slice sl )
         {
-            message_type mess;
-            mess.ParseFromArray( sl.data( ), sl.size( ) );
-            std::cout << "Got message " << mess.DebugString( ) << std::endl;
+            auto mess = mcache_.get( );
+            mess->ParseFromArray( sl.data( ), sl.size( ) );
+            std::cout << "Got message " << mess->DebugString( ) << std::endl;
             call( mess );
-        }
-
-        std::uint64_t next_id( )
-        {
-            return next_id_++;
-        }
-
-        std::uint64_t next_tag( )
-        {
-            return next_tag_++;
-        }
-
-        buffer_slice prepare_message( buffer_type buf, const message &mess )
-        {
-            typedef typename parent_type::size_policy size_policy;
-
-            auto tag = next_tag( );
-
-            buf->resize( size_policy::max_length );
-
-            const size_t old_len   = buf->size( );
-            const size_t hash_size = hash( )->length( );
-
-            tag_policy::append( tag, *buf );
-            mess.AppendToString( buf.get( ) );
-
-            buf->resize( buf->size( ) + hash_size );
-
-            hash( )->get( buf->c_str( ) + old_len,
-                          buf->size( ) - old_len - hash_size,
-                       &(*buf)[buf->size( ) - hash_size]);
-
-            buffer_slice res( &(*buf)[old_len], buf->size( ) - old_len );
-
-            buffer_slice packed = pack_message( buf, res );
-
-            return insert_size_prefix( buf, packed );
         }
 
         void init( )
         {
-            message_sptr mess = std::make_shared<message_type>( );
-            mess->set_call( "I0" );
-            mess->set_body( "FUUUUUUUUUUUUUUUU!" );
-
-            buffer_type buf = std::make_shared<std::string>( );
-            auto slice = prepare_message( buf, *mess );
-
-            get_transport( )->write( slice.data( ), slice.size( ),
-                                     callbacks::post([buf](...){ } ) );
+            message_sptr mess = mcache_.get( );
+            mess->set_call( "init" );
+            send_message( mess );
             get_transport( )->read( );
         }
 
@@ -184,15 +121,10 @@ namespace {
             std::cout << "err " << mess << std::endl;
         }
 
-        device *my_device_ = nullptr;
-
-        std::atomic<std::uint64_t> next_tag_;
-        std::atomic<std::uint64_t> next_id_;
-
-        call_map  calls_;
-        push_call push_;
-
-        bool                    ready_ = false;
+        device      *my_device_ = nullptr;
+        push_call    push_;
+        bool         ready_     = false;
+        std::string  name_;
 //        std::condition_variable ready_var_;
 //        std::mutex              ready_lock_;
     };
@@ -210,7 +142,7 @@ namespace {
 
         void on_read( char *data, size_t length )
         {
-
+            proto_->send( data, length );
         }
 
         static
@@ -220,7 +152,9 @@ namespace {
             auto inst = std::make_shared<device>( app );
             auto d = common::open_tun( inf.device );
 
+            inst->cln_name_ = inf.id;
             inst->dev_name_ = d.name( );
+
             inst->get_stream( ).assign( d.release( ) );
 
             return inst;
@@ -233,6 +167,7 @@ namespace {
                 [this]( transport_type *t )
                 {
                     proto_ = std::make_shared<client_delegate>( 4096 );
+                    proto_->my_device_ = this;
                     proto_->assign_transport( t );
                     t->set_delegate( proto_.get( ) );
                     proto_->assign_transport( t );
@@ -257,7 +192,6 @@ namespace {
 
         void start( )
         {
-            start_read( );
             client_->start( );
         }
 
@@ -275,6 +209,8 @@ namespace {
         proto_sptr                      proto_;
         noname::client::client_sptr     client_;
         std::string                     dev_name_;
+        std::string                     cln_name_;
+
     };
 
     using device_sptr = std::shared_ptr<device>;
@@ -282,11 +218,72 @@ namespace {
 
     //////////////////////////// CLIENT IMPL
 
-    bool client_delegate::on_push( message_type &mess )
+    bool client_delegate::on_push(message_sptr &mess )
     {
-        my_device_->write( mess.body( ).c_str( ), mess.body( ).size( ) );
+        my_device_->write( mess->body( ).c_str( ),
+                           mess->body( ).size( ) );
+        mcache_.push( mess );
         return true;
     }
+
+    void client_delegate::send_register_me( message_sptr &mess )
+    {
+        mess->set_call( "reg" );
+        rpc::tuntap::register_req req;
+        req.set_name( my_device_->cln_name_ );
+        mess->set_body( req.SerializeAsString( ) );
+
+        send_message( mess );
+    }
+
+    bool client_delegate::on_register_ok( message_sptr &mess )
+    {
+        mcache_.push( mess );
+
+        rpc::tuntap::register_res res;
+
+        res.ParseFromString( mess->body( ) );
+
+        auto naddr  = ntohl( res.iface_addr( ).v4_saddr( ));
+        auto ndaddr = ntohl( res.iface_addr( ).v4_daddr( ));
+        auto nmask  = ntohl( res.iface_addr( ).v4_mask( ));
+
+        address_v4 saddr(naddr);
+        address_v4 daddr(ndaddr);
+        address_v4 mask(nmask);
+
+        std::cout << "Got address: "
+               << quote(saddr.to_string( )
+                        + "->"
+                        + daddr.to_string( ))
+               << " and mask: " << quote(mask.to_string( ));
+
+        auto hdl = my_device_->get_stream( ).native_handle( );
+
+        clients2::register_info reginfo;
+
+        reginfo.ip        = saddr.to_string( );
+        reginfo.mask      = mask.to_string( );
+        reginfo.server_ip = daddr.to_string( );
+
+        common::setup_device( hdl, my_device_->dev_name_,
+                              reginfo.ip,
+                              reginfo.server_ip,
+                              reginfo.mask );
+
+//        cli->new_client_registered( clnt_->shared_from_this( ),
+//                                    *devhint_, reginfo );
+
+        ready_ = true;
+        my_device_->start_read( );
+
+        std::cout << "Device " << quote(my_device_->dev_name_)
+                  << " setup success.";
+
+
+        return true;
+    }
+
     ////////////////////////////////////////
 
 }

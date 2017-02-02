@@ -24,6 +24,12 @@ namespace msctl { namespace agent {
             bool                      udp = false;
         };
 
+        struct register_info {
+            std::string ip;
+            std::string mask;
+            std::string server_ip;
+        };
+
         clients2( application *app );
         static std::shared_ptr<clients2> create( application *app );
         static const char *name( ) 
