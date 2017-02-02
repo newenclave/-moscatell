@@ -198,6 +198,13 @@ namespace  {
             mess->set_call( "push" );
             mess->set_body( data, length );
             auto srcdst = common::extract_ip_v4( data, length );
+
+            LOGINF << "Got "
+                   << address_v4(srcdst.first).to_string( )
+                   << " "
+                   << address_v4(srcdst.second).to_string( )
+                   ;
+
             if( srcdst.second ) {
 
                 //std::cerr << std::hex << (srcdst.second & 0xFF000000) << "\n";
