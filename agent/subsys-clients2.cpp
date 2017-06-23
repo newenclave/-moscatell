@@ -10,7 +10,7 @@
 
 #include "protocol/tuntap.pb.h"
 
-#define LOG(lev) log_(lev, "clients2") 
+#define LOG(lev) log_(lev, "clients2")
 #define LOGINF   LOG(logger_impl::level::info)
 #define LOGDBG   LOG(logger_impl::level::debug)
 #define LOGERR   LOG(logger_impl::level::error)
@@ -50,6 +50,7 @@ namespace {
 
         bool on_ready( message_sptr &mess )
         {
+
             calls_["push"] = [this]( message_sptr &mess )
                              { return on_push( mess ); };
 
@@ -382,16 +383,16 @@ namespace {
     { }
 
     void clients2::start( )
-    { 
+    {
         impl_->start_all( );
         impl_->LOGINF << "Started.";
     }
 
     void clients2::stop( )
-    { 
+    {
         impl_->LOGINF << "Stopped.";
     }
-    
+
     std::shared_ptr<clients2> clients2::create( application *app )
     {
         return std::make_shared<clients2>( app );
